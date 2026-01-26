@@ -89,7 +89,7 @@ function CourseListPage({ navigate }) {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/courses?role=admin');
+      const response = await fetch('https://higherpolynomial-node.vercel.app/api/courses?role=admin');
       if (response.ok) {
         const data = await response.json();
         setCourses(data.courses || []);
@@ -104,7 +104,7 @@ function CourseListPage({ navigate }) {
   const handlePublishCourse = async (id, currentStatus) => {
     const newStatus = currentStatus === 'published' ? 'draft' : 'published';
     try {
-      const response = await fetch(`http://localhost:3000/api/admin/courses/${id}/publish`, {
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/admin/courses/${id}/publish`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
@@ -122,7 +122,7 @@ function CourseListPage({ navigate }) {
     if (!confirm("Are you sure? This will permanently delete the course, all its playlists, and all its videos.")) return;
 
     try {
-      const response = await fetch(`http://localhost:3000/api/courses/${id}`, {
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/courses/${id}`, {
         method: 'DELETE'
       });
 
@@ -260,7 +260,7 @@ function CreateCoursePage({ navigate, isEdit = false, courseId = null }) {
 
   const fetchCourseData = async () => {
     try {
-      const response = await fetch(`http://localhost:3000/api/courses/${courseId}`);
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/courses/${courseId}`);
       if (response.ok) {
         const data = await response.json();
         const course = data.course;
@@ -331,7 +331,7 @@ function CreateCoursePage({ navigate, isEdit = false, courseId = null }) {
         if (formData.promoVideo) data.append('video', formData.promoVideo);
         if (formData.notes) data.append('notes', formData.notes);
 
-        const url = isEdit ? `http://localhost:3000/api/courses/${courseId}` : 'http://localhost:3000/api/courses';
+        const url = isEdit ? `https://higherpolynomial-node.vercel.app/api/courses/${courseId}` : 'https://higherpolynomial-node.vercel.app/api/courses';
         const method = isEdit ? 'PUT' : 'POST';
 
         const response = await fetch(url, {
@@ -651,7 +651,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
     setLoading(true);
     try {
       // Fetch full course details including playlists
-      const response = await fetch(`http://localhost:3000/api/courses/${courseId}`);
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/courses/${courseId}`);
       if (response.ok) {
         const data = await response.json();
         setCourse(data.course);
@@ -668,7 +668,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
 
   const fetchPlaylists = async () => {
     try {
-      const response = await fetch(`http://localhost:3000/api/courses/${courseId}/playlists`);
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/courses/${courseId}/playlists`);
       if (response.ok) {
         const data = await response.json();
         setPlaylists(data.playlists || []);
@@ -685,7 +685,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
     }
 
     try {
-      const response = await fetch('http://localhost:3000/api/playlists', {
+      const response = await fetch('https://higherpolynomial-node.vercel.app/api/playlists', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -710,7 +710,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
 
   const handleUpdatePlaylist = async (id) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/playlists/${id}`, {
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/playlists/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingPlaylist)
@@ -729,7 +729,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
   const handleDeletePlaylist = async (id) => {
     if (!confirm("Are you sure? This will delete all videos in this playlist.")) return;
     try {
-      const response = await fetch(`http://localhost:3000/api/playlists/${id}`, {
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/playlists/${id}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -776,7 +776,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
         });
       }, 500);
 
-      const response = await fetch('http://localhost:3000/api/admin/upload-video', {
+      const response = await fetch('https://higherpolynomial-node.vercel.app/api/admin/upload-video', {
         method: 'POST',
         body: formData
       });
@@ -817,7 +817,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
   const handleDeleteVideo = async (videoId) => {
     if (!confirm("Are you sure you want to delete this video?")) return;
     try {
-      const response = await fetch(`http://localhost:3000/api/admin/videos/${videoId}`, {
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/admin/videos/${videoId}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -839,7 +839,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
       if (editingVideo.thumbnailFile) formData.append('thumbnail', editingVideo.thumbnailFile);
       if (editingVideo.notesFile) formData.append('notes', editingVideo.notesFile);
 
-      const response = await fetch(`http://localhost:3000/api/admin/videos/${videoId}`, {
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/admin/videos/${videoId}`, {
         method: 'PUT',
         body: formData
       });
@@ -1249,7 +1249,7 @@ function CoursePreviewPage({ courseId, navigate }) {
 
   const fetchCourseData = async () => {
     try {
-      const response = await fetch(`http://localhost:3000/api/courses/${courseId}`);
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/courses/${courseId}`);
       if (response.ok) {
         const data = await response.json();
         setCourseData(data);
@@ -1264,7 +1264,7 @@ function CoursePreviewPage({ courseId, navigate }) {
     const newStatus = displayCourse.status === 'published' ? 'draft' : 'published';
 
     try {
-      const response = await fetch(`http://localhost:3000/api/admin/courses/${courseId}/publish`, {
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/admin/courses/${courseId}/publish`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })

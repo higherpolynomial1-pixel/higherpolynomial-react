@@ -21,7 +21,7 @@ const UserCourseDetails = () => {
 
     const fetchCourseDetails = async () => {
         try {
-            const response = await fetch(`http://localhost:3000/api/courses/${id}`);
+            const response = await fetch(`https://higherpolynomial-node.vercel.app/api/courses/${id}`);
             if (!response.ok) throw new Error('Failed to load course');
             const data = await response.json();
 
