@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PlayCircle, FileText, ArrowLeft, BookOpen, Clock, Download, ChevronDown, ChevronRight, List } from 'lucide-react';
+import { AuthContext } from '../auth/AuthContext';
 
 const UserCourseDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { isAuthenticated } = React.useContext(AuthContext);
     const [course, setCourse] = useState(null);
     const [playlists, setPlaylists] = useState([]);
     const [activeLesson, setActiveLesson] = useState(null);
@@ -221,15 +223,41 @@ const UserCourseDetails = () => {
                     <div className="space-y-8 animate-in slide-in-from-right duration-300">
                         {/* Player Container */}
                         <div className="bg-black rounded-2xl overflow-hidden shadow-2xl aspect-video relative ring-1 ring-white/10">
-                            <video
-                                src={activeLesson.video_url}
-                                controls
-                                className="w-full h-full object-contain"
-                                poster={activeLesson.thumbnail || course.thumbnail}
-                                autoPlay
-                            >
-                                Your browser does not support the video tag.
-                            </video>
+                            {isAuthenticated ? (
+                                <video
+                                    src={activeLesson.video_url}
+                                    controls
+                                    className="w-full h-full object-contain"
+                                    poster={activeLesson.thumbnail || course.thumbnail}
+                                    autoPlay
+                                >
+                                    Your browser does not support the video tag.
+                                </video>
+                            ) : (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 backdrop-blur-sm p-6 text-center space-y-6">
+                                    <div className="w-20 h-20 bg-purple-600/20 rounded-full flex items-center justify-center text-purple-400 border border-purple-500/30">
+                                        <PlayCircle size={40} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <h3 className="text-2xl font-black text-white uppercase tracking-tight">Ready to start learning?</h3>
+                                        <p className="text-gray-400 font-medium max-w-sm">Please log in or create an account to access this lesson and start your path to mastery.</p>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <button
+                                            onClick={() => navigate('/login')}
+                                            className="px-8 py-3 bg-purple-600 text-white font-black rounded-xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/20"
+                                        >
+                                            Login to Watch
+                                        </button>
+                                        <button
+                                            onClick={() => navigate('/signup')}
+                                            className="px-8 py-3 bg-white/10 text-white font-black rounded-xl border border-white/20 hover:bg-white/20 transition-all"
+                                        >
+                                            Get Started
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Video Meta & Description */}

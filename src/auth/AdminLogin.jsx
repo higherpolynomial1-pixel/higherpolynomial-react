@@ -106,9 +106,9 @@ const AdminLogin = () => {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-purple-50 to-purple-100 px-4">
       <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-xl transform transition-all duration-300 hover:shadow-2xl">
-        <Link to="/quirkyQ">
+        <Link to="/Higher Polynomial">
           <h2 className="text-3xl font-bold text-center text-purple-600 mb-6">
-            Admin Login to QuirkyQ
+            Admin Login to Higher Polynomial
           </h2>
         </Link>
         

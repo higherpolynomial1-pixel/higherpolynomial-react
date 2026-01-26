@@ -1,389 +1,240 @@
 
 
-
 import React, { useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FaUser, FaLock, FaEye, FaEyeSlash, FaEnvelope, FaArrowLeft, FaPhone } from "react-icons/fa";
 import axios from "axios";
 import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import { AuthContext } from "../auth/AuthContext";
 
 const Login = () => {
-  const [loginIdentifier, setLoginIdentifier] = useState("");
+  const [emailInput, setEmailInput] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [otp, setOtp] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [showNewPassword, setShowNewPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
-  const [isResetOtpSent, setIsResetOtpSent] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
   const navigate = useNavigate();
   const { login } = useContext(AuthContext);
 
-  // Handle Login
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    if (!loginIdentifier || !password) {
-      toast.error("Please enter both email/mobile and password", { position: "top-right" });
-      setLoading(false);
-      return;
-    }
-
-    // Determine if the identifier is an email or mobile number
-    const isEmail = loginIdentifier.includes('@');
-    const loginData = isEmail 
-      ? { email: loginIdentifier, password }
-      : { mobile_number: loginIdentifier, password };
-
     try {
-      const response = await axios.post(
-        " https://query-q-backend.vercel.app/api/users/login",
-        loginData,
-        { headers: { "Content-Type": "application/json" } }
-      );
+      const response = await axios.post("http://localhost:3000/api/login", {
+        email: emailInput,
+        password
+      });
 
-      if (response.data.message === "Login successful") {
-        toast.success("Login successful! Redirecting to dashboard...", { position: "top-right" });
-        login(response.data.user);
-        setTimeout(() => {
-          navigate("/dashboard");
-          setLoading(false);
-        }, 1000);
-      } else if (response.data.message === "Invalid email or password") {
-        toast.error("Invalid credentials", { position: "top-right" });
-        setLoading(false);
-      } else {
-        toast.error("Login failed. Please try again.", { position: "top-right" });
-        setLoading(false);
+      if (response.status === 200) {
+        toast.success("Welcome back!");
+        login(response.data.user, response.data.token);
+        setTimeout(() => navigate("/dashboard"), 1000);
       }
     } catch (error) {
-      if (error.response?.data?.message === "Invalid email or password") {
-        toast.error("Invalid credentials", { position: "top-right" });
-      } else {
-        toast.error("An error occurred during login. Please try again.", { position: "top-right" });
-      }
-      setLoading(false);
-    }
-  };
-
-  // Send OTP for Forgot Password
-  const handleForgotPassword = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    if (!loginIdentifier) {
-      toast.error("Please enter your email or mobile number", { position: "top-right" });
-      setLoading(false);
-      return;
-    }
-
-    // Determine if the identifier is an email or mobile number
-    const isEmail = loginIdentifier.includes('@');
-    const forgotData = isEmail 
-      ? { email: loginIdentifier }
-      : { mobile_number: loginIdentifier };
-
-    try {
-      const response = await axios.post(
-        " https://query-q-backend.vercel.app/api/users/forgot-password",
-        forgotData,
-        { headers: { "Content-Type": "application/json" } }
-      );
-
-      if (response.data.message === "OTP sent successfully!") {
-        toast.success("OTP sent successfully!", { position: "top-right" });
-        setIsResetOtpSent(true);
-      } else {
-        toast.error(response.data.message || "Failed to send OTP. Please try again.", { position: "top-right" });
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to send OTP. Server error.", { position: "top-right" });
+      toast.error(error.response?.data?.message || "Login failed. Please check your credentials.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Reset Password with OTP
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await axios.post("http://localhost:3000/api/forgot-password", { email: emailInput });
+      toast.success("OTP sent to your email!");
+      setIsOtpSent(true);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to send OTP.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setLoading(true);
-
-    if (!otp || !newPassword) {
-      toast.error("Please enter both OTP and new password", { position: "top-right" });
-      setLoading(false);
-      return;
-    }
-
-    // Determine if the identifier is an email or mobile number
-    const isEmail = loginIdentifier.includes('@');
-    const resetData = isEmail 
-      ? { email: loginIdentifier, otp, newPassword }
-      : { mobile_number: loginIdentifier, otp, newPassword };
-
     try {
-      const response = await axios.post(
-        " https://query-q-backend.vercel.app/api/users/reset-password",
-        resetData,
-        { headers: { "Content-Type": "application/json" } }
-      );
-
-      if (response.data.message === "Password reset successfully!") {
-        toast.success("Password reset successfully! Returning to login...", { position: "top-right" });
-        setTimeout(() => {
-          setIsForgotPassword(false);
-          setIsResetOtpSent(false);
-          setOtp("");
-          setNewPassword("");
-          setLoading(false);
-        }, 1000);
-      } else {
-        toast.error(response.data.message || "Password reset failed. Please try again.", { position: "top-right" });
-        setLoading(false);
-      }
+      await axios.post("http://localhost:3000/api/reset-password", {
+        email: emailInput,
+        otp,
+        newPassword
+      });
+      toast.success("Password reset successful! Please login.");
+      setIsForgotPassword(false);
+      setIsOtpSent(false);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Invalid OTP or reset failed. Please try again.", { position: "top-right" });
+      toast.error(error.response?.data?.message || "Reset failed.");
+    } finally {
       setLoading(false);
     }
-  };
-
-  // Back button handler
-  const handleBack = () => {
-    setIsForgotPassword(false);
-    setIsResetOtpSent(false);
-    setOtp("");
-    setNewPassword("");
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-800 px-4">
-      <div className="w-full max-w-md bg-gray-800 p-8 rounded-2xl shadow-2xl transform transition-all duration-500 hover:shadow-purple-500/50 animate-fade-in">
-        <Link to="/quirkyQ">
-          <h2 className="text-4xl font-extrabold text-center text-white mb-8">
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
-              {isForgotPassword ? "Reset Password" : "Login to QuirkyQ"}
-            </span>
-          </h2>
-        </Link>
+    <div className="min-h-screen flex items-center justify-center bg-[#0f172a] relative overflow-hidden font-sans">
+      {/* Abstract Background Shapes */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/20 blur-[120px] rounded-full"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/20 blur-[120px] rounded-full"></div>
 
-        {!isForgotPassword ? (
-          // Login Form
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="relative group">
-              <label className="block text-gray-300 font-medium mb-2 transition-all duration-300 group-focus-within:text-purple-400">
-                Email or Mobile Number
-              </label>
-              <div className="flex items-center border border-gray-600 rounded-full overflow-hidden bg-gray-700 group-focus-within:border-purple-500 transition-all duration-300">
-                <span className="px-4 text-gray-400 group-focus-within:text-purple-400">
-                  {loginIdentifier.includes('@') ? <FaEnvelope /> : <FaPhone />}
-                </span>
-                <input
-                  type="text"
-                  className="w-full p-3 bg-transparent text-gray-200 focus:outline-none placeholder-gray-500"
-                  placeholder="Enter your email or mobile number"
-                  value={loginIdentifier}
-                  onChange={(e) => setLoginIdentifier(e.target.value)}
-                  required
-                />
-              </div>
+      <div className="w-full max-w-md px-6 py-12 relative z-10">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2rem] p-8 shadow-2xl">
+          {/* Logo/Header */}
+          <div className="text-center mb-10">
+            <div className="inline-flex w-16 h-16 bg-purple-600 rounded-2xl items-center justify-center shadow-lg shadow-purple-500/30 mb-4 rotate-3">
+              <span className="text-white text-3xl font-black italic">Q</span>
             </div>
-
-            <div className="relative group">
-              <label className="block text-gray-300 font-medium mb-2 transition-all duration-300 group-focus-within:text-purple-400">
-                Password
-              </label>
-              <div className="flex items-center border border-gray-600 rounded-full overflow-hidden bg-gray-700 group-focus-within:border-purple-500 transition-all duration-300">
-                <span className="px-4 text-gray-400 group-focus-within:text-purple-400">
-                  <FaLock />
-                </span>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  className="w-full p-3 bg-transparent text-gray-200 focus:outline-none placeholder-gray-500"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-                <button
-                  type="button"
-                  className="px-4 text-gray-400 hover:text-purple-400 transition-colors duration-300"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <FaEye /> : <FaEyeSlash />}
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-full text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={loading}
-            >
-              {loading ? (
-                <span className="flex items-center space-x-2">
-                  <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
-                  </svg>
-                  <span>Logging in...</span>
-                </span>
-              ) : (
-                "Login"
-              )}
-            </button>
-
-            <p className="text-center text-gray-400 mt-4">
-              Forgot Password?{" "}
-              <button
-                type="button"
-                onClick={() => setIsForgotPassword(true)}
-                className="text-purple-400 hover:text-purple-300 transition-colors duration-300"
-              >
-                Reset here
-              </button>
+            <h1 className="text-3xl font-black text-white tracking-tight">
+              {isForgotPassword ? "Secure Access" : "Welcome Back"}
+            </h1>
+            <p className="text-gray-400 mt-2 font-medium">
+              {isForgotPassword ? "Verify your identity to proceed" : "Enter your credentials to continue"}
             </p>
-          </form>
-        ) : !isResetOtpSent ? (
-          // Forgot Password Email/Mobile Form
-          <form onSubmit={handleForgotPassword} className="space-y-6">
-            <div className="relative group">
-              <label className="block text-gray-300 font-medium mb-2 transition-all duration-300 group-focus-within:text-purple-400">
-                Email or Mobile Number
-              </label>
-              <div className="flex items-center border border-gray-600 rounded-full overflow-hidden bg-gray-700 group-focus-within:border-purple-500 transition-all duration-300">
-                <span className="px-4 text-gray-400 group-focus-within:text-purple-400">
-                  {loginIdentifier.includes('@') ? <FaEnvelope /> : <FaPhone />}
-                </span>
-                <input
-                  type="text"
-                  className="w-full p-3 bg-transparent text-gray-200 focus:outline-none placeholder-gray-500"
-                  placeholder="Enter your email or mobile number"
-                  value={loginIdentifier}
-                  onChange={(e) => setLoginIdentifier(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
+          </div>
 
-            <div className="flex space-x-4">
-              <button
-                type="button"
-                onClick={handleBack}
-                className="w-1/2 bg-gray-600 text-white py-3 rounded-full text-lg font-semibold hover:bg-gray-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg transform hover:scale-105"
-              >
-                <FaArrowLeft className="mr-2" />
-                Back
-              </button>
+          {!isForgotPassword ? (
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-300 ml-1">Email Address</label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-purple-500 transition-colors">
+                    <FaEnvelope />
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    className="w-full pl-11 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all font-medium"
+                    placeholder="name@company.com"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center px-1">
+                  <label className="text-sm font-bold text-gray-300">Password</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPassword(true)}
+                    className="text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors"
+                  >
+                    Forgot?
+                  </button>
+                </div>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-purple-500 transition-colors">
+                    <FaLock />
+                  </div>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    className="w-full pl-11 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all font-medium"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 hover:text-white transition-colors"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
+              </div>
+
               <button
                 type="submit"
-                className="w-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-full text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={loading}
+                className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-2xl shadow-xl shadow-purple-600/20 active:scale-95 transition-all flex items-center justify-center gap-2 group"
               >
                 {loading ? (
-                  <span className="flex items-center space-x-2">
-                    <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
-                    </svg>
-                    <span>Sending OTP...</span>
-                  </span>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                 ) : (
-                  "Send OTP"
+                  <>
+                    Sign In
+                    <div className="w-5 h-5 flex items-center justify-center group-hover:translate-x-1 transition-transform">
+                      <FaArrowLeft className="rotate-180 text-xs" />
+                    </div>
+                  </>
                 )}
               </button>
-            </div>
-          </form>
-        ) : (
-          // Reset Password Form
-          <form onSubmit={handleResetPassword} className="space-y-6">
-            <div className="relative group">
-              <label className="block text-gray-300 font-medium mb-2 transition-all duration-300 group-focus-within:text-purple-400">
-                Enter OTP
-              </label>
-              <div className="flex items-center border border-gray-600 rounded-full overflow-hidden bg-gray-700 group-focus-within:border-purple-500 transition-all duration-300">
-                <span className="px-4 text-gray-400 group-focus-within:text-purple-400">
-                  <FaLock />
-                </span>
+            </form>
+          ) : (
+            <form onSubmit={isOtpSent ? handleResetPassword : handleForgotPassword} className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-300 ml-1">Email Address</label>
                 <input
-                  type="text"
-                  className="w-full p-3 bg-transparent text-gray-200 focus:outline-none placeholder-gray-500"
-                  placeholder="Enter 6-digit OTP"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  maxLength={6}
+                  type="email"
                   required
+                  disabled={isOtpSent}
+                  className="w-full px-4 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all font-medium disabled:opacity-50"
+                  placeholder="Verify your email"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
                 />
               </div>
-            </div>
 
-            <div className="relative group">
-              <label className="block text-gray-300 font-medium mb-2 transition-all duration-300 group-focus-within:text-purple-400">
-                New Password
-              </label>
-              <div className="flex items-center border border-gray-600 rounded-full overflow-hidden bg-gray-700 group-focus-within:border-purple-500 transition-all duration-300">
-                <span className="px-4 text-gray-400 group-focus-within:text-purple-400">
-                  <FaLock />
-                </span>
-                <input
-                  type={showNewPassword ? "text" : "password"}
-                  className="w-full p-3 bg-transparent text-gray-200 focus:outline-none placeholder-gray-500"
-                  placeholder="Enter new password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                />
+              {isOtpSent && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-gray-300 ml-1">6-Digit OTP</label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={6}
+                      className="w-full px-4 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white tracking-[0.5em] text-center font-black focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all"
+                      placeholder="000000"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-gray-300 ml-1">New Password</label>
+                    <input
+                      type="password"
+                      required
+                      className="w-full px-4 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all"
+                      placeholder="Min. 8 characters"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="flex gap-4">
                 <button
                   type="button"
-                  className="px-4 text-gray-400 hover:text-purple-400 transition-colors duration-300"
-                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  onClick={() => setIsForgotPassword(false)}
+                  className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-2xl border border-white/10 active:scale-95 transition-all text-sm"
                 >
-                  {showNewPassword ? <FaEye /> : <FaEyeSlash />}
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-[2] bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-2xl shadow-xl shadow-purple-600/20 active:scale-95 transition-all"
+                >
+                  {loading ? "Processing..." : (isOtpSent ? "Reset Password" : "Send OTP")}
                 </button>
               </div>
-            </div>
+            </form>
+          )}
 
-            <div className="flex space-x-4">
-              <button
-                type="button"
-                onClick={handleBack}
-                className="w-1/2 bg-gray-600 text-white py-3 rounded-full text-lg font-semibold hover:bg-gray-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg transform hover:scale-105"
-              >
-                <FaArrowLeft className="mr-2" />
-                Back
-              </button>
-              <button
-                type="submit"
-                className="w-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-full text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={loading}
-              >
-                {loading ? (
-                  <span className="flex items-center space-x-2">
-                    <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
-                    </svg>
-                    <span>Resetting...</span>
-                  </span>
-                ) : (
-                  "Reset Password"
-                )}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Sign Up Link */}
-        {!isForgotPassword && (
-          <p className="text-center text-gray-400 mt-6">
-            Don't have an account?{" "}
-            <Link to="/signup" className="text-purple-400 hover:text-purple-300 transition-colors duration-300 font-medium">
-              Sign Up
-            </Link>
-          </p>
-        )}
+          <div className="mt-8 text-center">
+            <p className="text-gray-400 font-medium">
+              New to EduLearn?{" "}
+              <Link to="/signup" className="text-purple-400 hover:text-purple-300 font-bold transition-colors underline-offset-4 hover:underline">
+                Create Account
+              </Link>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

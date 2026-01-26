@@ -12,41 +12,28 @@ export const AuthProvider = ({ children }) => {
     const storedUser = sessionStorage.getItem("user");
     return storedUser ? JSON.parse(storedUser) : null;
   });
-  const [userId, setUserId] = useState(sessionStorage.getItem("userId") || null);
-  const [email, setEmail] = useState(sessionStorage.getItem("email") || "");
+  const [token, setToken] = useState(sessionStorage.getItem("token") || null);
 
   // ✅ Login function
-  const login = (userData) => {
-    console.log("UserData received in login:", userData);
-
+  const login = (userData, userToken) => {
     setIsAuthenticated(true);
     setUser(userData);
-    setUserId(userData.id);
-    setEmail(userData.email);
+    setToken(userToken);
 
     sessionStorage.setItem("isAuthenticated", "true");
     sessionStorage.setItem("user", JSON.stringify(userData));
-    sessionStorage.setItem("userId", userData.id);
-    sessionStorage.setItem("email", userData.email);
-
-    console.log("Session Storage after login:", sessionStorage.getItem("email"));
+    sessionStorage.setItem("token", userToken);
   };
 
   // ✅ Logout function
   const logout = () => {
-    console.log("Logging out...");
-
     setIsAuthenticated(false);
     setUser(null);
-    setUserId(null);
-    setEmail("");
+    setToken(null);
 
     sessionStorage.removeItem("isAuthenticated");
     sessionStorage.removeItem("user");
-    sessionStorage.removeItem("userId");
-    sessionStorage.removeItem("email");
-
-    console.log("Session Storage after logout:", sessionStorage.getItem("email"));
+    sessionStorage.removeItem("token");
   };
 
   // ✅ Restore session from storage
@@ -55,13 +42,11 @@ export const AuthProvider = ({ children }) => {
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
-      setUserId(parsedUser.id);
-      setEmail(parsedUser.email || "");
     }
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, userId, email, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, token, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -141,7 +141,7 @@ const SalonOnboarding = () => {
       <section className="w-full max-w-6xl mx-auto bg-gray-800 rounded-3xl shadow-2xl p-10 mb-16 transform transition-all duration-500 hover:shadow-3xl">
         <div className="text-center mb-10 animate-fade-in">
           <h2 className="text-4xl sm:text-5xl font-extrabold text-white">
-            Why Choose <span className="text-purple-400">QuirkyQ</span>
+            Why Choose <span className="text-purple-400">Higher Polynomial</span>
           </h2>
           <p className="text-base text-gray-300 mt-5 max-w-2xl mx-auto">
             The ultimate choice for beauty and healthcare bookings.
