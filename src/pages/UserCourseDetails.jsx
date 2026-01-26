@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { PlayCircle, FileText, ArrowLeft, BookOpen, Clock, Download } from 'lucide-react';
+import { PlayCircle, FileText, ArrowLeft, BookOpen, Clock, Download, ChevronDown, ChevronRight, List } from 'lucide-react';
 
 const UserCourseDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [course, setCourse] = useState(null);
-    const [lessons, setLessons] = useState([]);
-    const [activeLesson, setActiveLesson] = useState(null); // specific lesson video
+    const [playlists, setPlaylists] = useState([]);
+    const [activeLesson, setActiveLesson] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [currentView, setCurrentView] = useState('course'); // 'course', 'playlist', 'video'
+    const [selectedPlaylist, setSelectedPlaylist] = useState(null);
 
     useEffect(() => {
         fetchCourseDetails();
@@ -22,7 +24,7 @@ const UserCourseDetails = () => {
             const data = await response.json();
 
             setCourse(data.course);
-            setLessons(data.lessons || []);
+            setPlaylists(data.playlists || []);
             setLoading(false);
         } catch (err) {
             console.error(err);
@@ -49,153 +51,259 @@ const UserCourseDetails = () => {
         </div>
     );
 
-    // Determine what video to show: Active Lesson -> Course Promo URL -> None
-    const currentVideoUrl = activeLesson ? activeLesson.video_url : course.video_url;
-
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             {/* Header / Nav */}
             <header className="bg-white shadow-sm border-b sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                     <div className="flex items-center gap-4">
                         <button
-                            onClick={() => navigate('/dashboard')}
+                            onClick={() => {
+                                if (currentView === 'video') setCurrentView('playlist');
+                                else if (currentView === 'playlist') setCurrentView('course');
+                                else navigate('/dashboard');
+                            }}
                             className="p-2 hover:bg-gray-100 rounded-full transition"
                         >
                             <ArrowLeft size={20} className="text-gray-600" />
                         </button>
-                        <h1 className="text-xl font-bold text-gray-900 truncate max-w-lg">{course.title}</h1>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-semibold">
-                            {course.category || 'Course'}
-                        </span>
-                    </div>
-                </div>
-            </header>
-
-            <main className="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Column: Video Player & Description */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Main Video Player */}
-                    <div className="bg-black rounded-xl overflow-hidden shadow-lg aspect-video relative group">
-                        {currentVideoUrl ? (
-                            <video
-                                src={currentVideoUrl}
-                                controls
-                                className="w-full h-full object-contain"
-                                poster={!activeLesson && course.thumbnail ? course.thumbnail : undefined}
-                            >
-                                Your browser does not support the video tag.
-                            </video>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center h-full text-gray-400 bg-gray-900">
-                                <PlayCircle size={64} className="mb-4 opacity-50" />
-                                <p>Select a lesson to start learning</p>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Info Section */}
-                    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                            {activeLesson ? activeLesson.title : "Course Overview"}
-                        </h2>
-                        <div className="prose text-gray-600">
-                            <p>{course.description}</p>
-                        </div>
-
-                        {/* PDF Notes Section */}
-                        {course.notes_pdf && (
-                            <div className="mt-8 pt-6 border-t border-gray-100">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                    <BookOpen size={20} className="mr-2 text-purple-600" />
-                                    Course Material
-                                </h3>
-                                <div className="flex items-center justify-between bg-blue-50 border border-blue-100 p-4 rounded-lg">
-                                    <div className="flex items-center gap-3">
-                                        <FileText size={24} className="text-blue-500" />
-                                        <div>
-                                            <p className="font-medium text-gray-900">Course Notes (PDF)</p>
-                                            <a
-                                                href={course.notes_pdf}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-sm text-blue-600 hover:underline"
-                                            >
-                                                View / Download
-                                            </a>
-                                        </div>
-                                    </div>
-                                    <a
-                                        href={course.notes_pdf}
-                                        download
-                                        className="p-2 hover:bg-blue-100 rounded-full text-blue-600 transition"
-                                    >
-                                        <Download size={20} />
-                                    </a>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Right Column: Lessons List */}
-                <div className="lg:col-span-1 space-y-6">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden sticky top-24">
-                        <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                            <h3 className="font-bold text-gray-900">Course Content</h3>
-                            <span className="text-xs text-gray-500 font-medium">{lessons.length} Lessons</span>
-                        </div>
-
-                        <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
-                            <div className="divide-y divide-gray-100">
-                                {/* Promo/Intro Item */}
-                                <button
-                                    onClick={() => setActiveLesson(null)}
-                                    className={`w-full text-left p-4 hover:bg-gray-50 transition flex items-start gap-3 ${!activeLesson ? 'bg-purple-50 border-l-4 border-purple-600' : ''}`}
-                                >
-                                    <div className={`mt-1 ${!activeLesson ? 'text-purple-600' : 'text-gray-400'}`}>
-                                        <PlayCircle size={18} />
-                                    </div>
-                                    <div>
-                                        <span className={`block font-medium ${!activeLesson ? 'text-purple-900' : 'text-gray-700'}`}>
-                                            Introduction & Promo
+                        <div className="flex flex-col">
+                            <h1 className="text-lg font-bold text-gray-900 truncate max-w-lg">
+                                {currentView === 'course' ? course.title : (currentView === 'playlist' ? selectedPlaylist.title : activeLesson.title)}
+                            </h1>
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                                <span className="hover:underline cursor-pointer" onClick={() => setCurrentView('course')}>Course</span>
+                                {currentView !== 'course' && (
+                                    <>
+                                        <span>/</span>
+                                        <span className={`hover:underline cursor-pointer ${currentView === 'playlist' ? 'font-bold text-purple-600' : ''}`} onClick={() => setCurrentView('playlist')}>
+                                            {selectedPlaylist?.title}
                                         </span>
-                                        <span className="text-xs text-gray-500">Overview</span>
-                                    </div>
-                                </button>
-
-                                {/* Lesson Items */}
-                                {lessons.map((lesson, index) => (
-                                    <button
-                                        key={lesson.id}
-                                        onClick={() => setActiveLesson(lesson)}
-                                        className={`w-full text-left p-4 hover:bg-gray-50 transition flex items-start gap-3 ${activeLesson?.id === lesson.id ? 'bg-purple-50 border-l-4 border-purple-600' : ''}`}
-                                    >
-                                        <div className={`mt-1 ${activeLesson?.id === lesson.id ? 'text-purple-600' : 'text-gray-400'}`}>
-                                            <PlayCircle size={18} />
-                                        </div>
-                                        <div>
-                                            <span className={`block font-medium ${activeLesson?.id === lesson.id ? 'text-purple-900' : 'text-gray-700'}`}>
-                                                {index + 1}. {lesson.title}
-                                            </span>
-                                            <span className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                                                <Clock size={12} /> {lesson.duration || 'Video'}
-                                            </span>
-                                        </div>
-                                    </button>
-                                ))}
-
-                                {lessons.length === 0 && (
-                                    <div className="p-8 text-center text-gray-500 text-sm">
-                                        No extra lessons added yet.
-                                    </div>
+                                    </>
+                                )}
+                                {currentView === 'video' && (
+                                    <>
+                                        <span>/</span>
+                                        <span className="font-bold text-purple-600 truncate max-w-[150px]">{activeLesson?.title}</span>
+                                    </>
                                 )}
                             </div>
                         </div>
                     </div>
                 </div>
+            </header>
+
+            <main className="flex-1 max-w-5xl w-full mx-auto p-4 lg:p-8">
+
+                {/* 1. COURSE VIEW */}
+                {currentView === 'course' && (
+                    <div className="space-y-8 animate-in fade-in duration-300">
+                        {/* Course Header Info */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="aspect-video md:aspect-[3/1] bg-gray-200">
+                                {course.thumbnail && <img src={course.thumbnail} className="w-full h-full object-cover" />}
+                            </div>
+                            <div className="p-8">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">
+                                        {course.category || 'General'}
+                                    </span>
+                                </div>
+                                <h2 className="text-4xl font-extrabold text-gray-900 mb-4">{course.title}</h2>
+                                <p className="text-xl text-gray-600 leading-relaxed mb-6">{course.description}</p>
+
+                                {course.notes_pdf && (
+                                    <a href={course.notes_pdf} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-purple-600 font-semibold hover:underline bg-purple-50 px-4 py-2 rounded-lg">
+                                        <FileText size={20} />
+                                        Download Course Guide (PDF)
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Playlists List */}
+                        <div>
+                            <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                                <BookOpen className="text-purple-600" />
+                                Course Content
+                                <span className="text-sm font-normal text-gray-500">({playlists.length} Playlists)</span>
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {playlists.map((playlist, idx) => (
+                                    <div
+                                        key={playlist.id}
+                                        onClick={() => {
+                                            setSelectedPlaylist(playlist);
+                                            setCurrentView('playlist');
+                                        }}
+                                        className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all cursor-pointer group"
+                                    >
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center font-bold">
+                                                {idx + 1}
+                                            </div>
+                                            <span className="text-xs font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded">
+                                                {playlist.videos?.length || 0} Videos
+                                            </span>
+                                        </div>
+                                        <h4 className="text-xl font-bold text-gray-900 group-hover:text-purple-600 transition-colors mb-2">{playlist.title}</h4>
+                                        <p className="text-gray-500 text-sm line-clamp-2">{playlist.description}</p>
+                                        <div className="mt-4 flex items-center text-purple-600 text-sm font-bold group-hover:translate-x-1 transition-transform">
+                                            Explore Playlist <ChevronRight size={16} />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* 2. PLAYLIST VIEW */}
+                {currentView === 'playlist' && selectedPlaylist && (
+                    <div className="space-y-8 animate-in slide-in-from-right duration-300">
+                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                            <div>
+                                <h2 className="text-3xl font-extrabold text-gray-900">{selectedPlaylist.title}</h2>
+                                <p className="text-gray-600 mt-2 max-w-2xl">{selectedPlaylist.description}</p>
+                            </div>
+                            <button
+                                onClick={() => setCurrentView('course')}
+                                className="text-purple-600 font-semibold hover:underline flex items-center gap-1"
+                            >
+                                <ArrowLeft size={16} /> Back to Course
+                            </button>
+                        </div>
+
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="divide-y divide-gray-100">
+                                {selectedPlaylist.videos?.map((video, idx) => (
+                                    <div
+                                        key={video.id}
+                                        onClick={() => {
+                                            setActiveLesson(video);
+                                            setCurrentView('video');
+                                        }}
+                                        className="p-6 flex items-center gap-4 hover:bg-gray-50 transition-colors cursor-pointer group"
+                                    >
+                                        <div className="relative w-32 aspect-video rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                                            {video.thumbnail && <img src={video.thumbnail} className="w-full h-full object-cover" />}
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/0 transition-colors">
+                                                <PlayCircle size={24} className="text-white drop-shadow-md" />
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="text-lg font-bold text-gray-900 truncate group-hover:text-purple-600 transition-colors flex items-center gap-2">
+                                                <span className="text-gray-400 text-sm font-mono">{(idx + 1).toString().padStart(2, '0')}</span>
+                                                {video.title}
+                                            </h4>
+                                            <p className="text-sm text-gray-500 truncate mt-1">{video.description}</p>
+                                            <div className="flex items-center gap-4 mt-2">
+                                                <span className="flex items-center gap-1 text-xs text-gray-400">
+                                                    <Clock size={12} /> {video.duration || '00:00'}
+                                                </span>
+                                                {video.notes_pdf && (
+                                                    <span className="flex items-center gap-1 text-xs text-purple-500 font-medium">
+                                                        <FileText size={12} /> Notes Included
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <ChevronRight className="text-gray-300 group-hover:text-purple-500 group-hover:translate-x-1 transition-all" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* 3. VIDEO PLAYER VIEW */}
+                {currentView === 'video' && activeLesson && (
+                    <div className="space-y-8 animate-in slide-in-from-right duration-300">
+                        {/* Player Container */}
+                        <div className="bg-black rounded-2xl overflow-hidden shadow-2xl aspect-video relative ring-1 ring-white/10">
+                            <video
+                                src={activeLesson.video_url}
+                                controls
+                                className="w-full h-full object-contain"
+                                poster={activeLesson.thumbnail || course.thumbnail}
+                                autoPlay
+                            >
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+
+                        {/* Video Meta & Description */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
+                                <div className="space-y-4 flex-1">
+                                    <div className="flex items-center gap-3">
+                                        <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold">
+                                            {selectedPlaylist?.title}
+                                        </span>
+                                        <span className="text-sm text-gray-400">Lesson {selectedPlaylist?.videos?.findIndex(v => v.id === activeLesson.id) + 1}</span>
+                                    </div>
+                                    <h2 className="text-3xl font-extrabold text-gray-900">{activeLesson.title}</h2>
+                                    <p className="text-lg text-gray-600 leading-relaxed">{activeLesson.description}</p>
+                                </div>
+
+                                <div className="flex flex-col gap-3 min-w-[240px]">
+                                    {activeLesson.notes_pdf && (
+                                        <a
+                                            href={activeLesson.notes_pdf}
+                                            download
+                                            className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-purple-700 transition shadow-lg shadow-purple-200"
+                                        >
+                                            <Download size={20} /> Download PDF Notes
+                                        </a>
+                                    )}
+                                    <button
+                                        onClick={() => setCurrentView('playlist')}
+                                        className="w-full flex items-center justify-center gap-2 border-2 border-gray-100 text-gray-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-50 transition"
+                                    >
+                                        <List size={20} className="text-purple-600" /> View Playlist
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Navigation */}
+                            <div className="pt-8 border-t border-gray-100 flex items-center justify-between">
+                                {(() => {
+                                    const currentIndex = selectedPlaylist.videos.findIndex(v => v.id === activeLesson.id);
+                                    const prevVideo = selectedPlaylist.videos[currentIndex - 1];
+                                    const nextVideo = selectedPlaylist.videos[currentIndex + 1];
+
+                                    return (
+                                        <>
+                                            {prevVideo ? (
+                                                <button
+                                                    onClick={() => setActiveLesson(prevVideo)}
+                                                    className="flex flex-col items-start gap-1 p-3 rounded-xl hover:bg-gray-50 transition border border-transparent hover:border-gray-100"
+                                                >
+                                                    <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Previous</span>
+                                                    <span className="font-bold text-gray-900 flex items-center gap-1 group">
+                                                        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> {prevVideo.title}
+                                                    </span>
+                                                </button>
+                                            ) : <div />}
+
+                                            {nextVideo ? (
+                                                <button
+                                                    onClick={() => setActiveLesson(nextVideo)}
+                                                    className="flex flex-col items-end gap-1 p-3 rounded-xl hover:bg-gray-50 transition border border-transparent hover:border-gray-100"
+                                                >
+                                                    <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Next</span>
+                                                    <span className="font-bold text-gray-900 flex items-center gap-1 group">
+                                                        {nextVideo.title} <ArrowLeft size={16} className="rotate-180 group-hover:translate-x-1 transition-transform" />
+                                                    </span>
+                                                </button>
+                                            ) : <div />}
+                                        </>
+                                    );
+                                })()}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
         </div>
     );

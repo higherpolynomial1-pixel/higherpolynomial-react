@@ -1,5 +1,5 @@
-import { useState, createContext, useContext } from 'react';
-import { Upload, Plus, Trash2, Eye, BookOpen, Video, FileText, DollarSign, Tag, User } from 'lucide-react';
+import { useState, createContext, useContext, useEffect } from 'react';
+import { Upload, Plus, Trash2, Eye, BookOpen, Video, FileText, DollarSign, Tag, User, List, PlayCircle } from 'lucide-react';
 
 // Context for managing courses globally
 const CourseContext = createContext();
@@ -49,6 +49,12 @@ export default function App() {
               <h1 className="text-2xl font-bold text-purple-600">EduLearn Admin</h1>
               <div className="flex space-x-4">
                 <button
+                  onClick={() => navigate('list')}
+                  className="px-4 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 transition"
+                >
+                  View All Courses
+                </button>
+                <button
                   onClick={() => navigate('create')}
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
                 >
@@ -61,8 +67,10 @@ export default function App() {
 
         {/* Content */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {currentPage === 'create' && <CreateCoursePage navigate={navigate} />}
-          {currentPage === 'videos' && <UploadVideosPage courseId={currentCourseId} navigate={navigate} />}
+          {currentPage === 'list' && <CourseListPage navigate={navigate} />}
+          {currentPage === 'create' && <CreateCoursePage navigate={navigate} isEdit={false} />}
+          {currentPage === 'edit' && <CreateCoursePage navigate={navigate} isEdit={true} courseId={currentCourseId} />}
+          {currentPage === 'playlists' && <ManagePlaylistsPage courseId={currentCourseId} navigate={navigate} />}
           {currentPage === 'preview' && <CoursePreviewPage courseId={currentCourseId} navigate={navigate} />}
         </main>
       </div>
@@ -70,9 +78,167 @@ export default function App() {
   );
 }
 
-// Create Course Component
-function CreateCoursePage({ navigate }) {
-  const { addCourse } = useCourses();
+// NEW: Course List Page
+function CourseListPage({ navigate }) {
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchCourses();
+  }, []);
+
+  const fetchCourses = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/courses?role=admin');
+      if (response.ok) {
+        const data = await response.json();
+        setCourses(data.courses || []);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+      setLoading(false);
+    }
+  };
+
+  const handlePublishCourse = async (id, currentStatus) => {
+    const newStatus = currentStatus === 'published' ? 'draft' : 'published';
+    try {
+      const response = await fetch(`http://localhost:3000/api/admin/courses/${id}/publish`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (response.ok) {
+        fetchCourses(); // Refresh
+      }
+    } catch (error) {
+      console.error("Publish error:", error);
+    }
+  };
+
+  const handleDeleteCourse = async (id) => {
+    if (!confirm("Are you sure? This will permanently delete the course, all its playlists, and all its videos.")) return;
+
+    try {
+      const response = await fetch(`http://localhost:3000/api/courses/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        alert("Course deleted successfully");
+        fetchCourses(); // Refresh list
+      } else {
+        throw new Error("Failed to delete course");
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      alert("Error deleting course");
+    }
+  };
+
+  if (loading) return <div className="text-center py-12">Loading courses...</div>;
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">All Courses</h2>
+          <p className="mt-2 text-gray-600">Manage your course content and playlists</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {courses.map(course => (
+          <div key={course.id} className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100 flex flex-col">
+            <div className="h-40 bg-gray-200 relative">
+              {course.thumbnail ? (
+                <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  <BookOpen size={48} />
+                </div>
+              )}
+            </div>
+            {/* Course Card Content */}
+            <div className="p-5 flex-1 flex flex-col">
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded bg-purple-100 text-purple-800 uppercase">
+                  {course.category || 'General'}
+                </span>
+                <span className={`text-xs font-bold px-2.5 py-0.5 rounded ${course.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                  {course.status === 'published' ? 'Published' : 'Draft'}
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-1">{course.title}</h3>
+              <p className="text-gray-600 text-sm mb-4 line-clamp-2">{course.description}</p>
+
+              <div className="mt-auto space-y-3">
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <span className="flex items-center gap-1"><Video size={14} /> Playlists available</span>
+                  <span className="font-bold text-purple-600">${course.price}</span>
+                </div>
+
+                <button
+                  onClick={() => handlePublishCourse(course.id, course.status)}
+                  className={`w-full py-2 rounded-lg font-medium transition flex items-center justify-center gap-2 ${course.status === 'published'
+                    ? 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                    }`}
+                >
+                  <Eye size={16} />
+                  {course.status === 'published' ? 'Move to Draft' : 'Publish Course'}
+                </button>
+
+                <button
+                  onClick={() => navigate('playlists', course.id)}
+                  className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition"
+                >
+                  Manage Playlists
+                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => navigate('edit', course.id)}
+                    className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm"
+                  >
+                    <Eye size={16} />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteCourse(course.id)}
+                    className="flex items-center justify-center gap-2 px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition text-sm"
+                  >
+                    <Trash2 size={16} />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {courses.length === 0 && (
+        <div className="text-center py-20 bg-white rounded-lg border-2 border-dashed border-gray-300">
+          <BookOpen size={48} className="mx-auto text-gray-400 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900">No courses yet</h3>
+          <p className="text-gray-500 mt-1">Start by creating your first course!</p>
+          <button
+            onClick={() => navigate('create')}
+            className="mt-6 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+          >
+            Create Course
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Create / Edit Course Page
+function CreateCoursePage({ navigate, isEdit = false, courseId = null }) {
+  const { addCourse, updateCourse } = useCourses();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -84,6 +250,37 @@ function CreateCoursePage({ navigate }) {
   });
   const [errors, setErrors] = useState({});
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
+  const [loading, setLoading] = useState(isEdit);
+
+  useEffect(() => {
+    if (isEdit && courseId) {
+      fetchCourseData();
+    }
+  }, [isEdit, courseId]);
+
+  const fetchCourseData = async () => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/courses/${courseId}`);
+      if (response.ok) {
+        const data = await response.json();
+        const course = data.course;
+        setFormData({
+          title: course.title,
+          description: course.description,
+          category: course.category,
+          price: course.price,
+          thumbnail: null,
+          promoVideo: null,
+          notes: null
+        });
+        setThumbnailPreview(course.thumbnail);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching course data:", error);
+      setLoading(false);
+    }
+  };
 
   const categories = ['Web Development', 'Mobile Development', 'Data Science', 'Design', 'Marketing', 'Business'];
 
@@ -128,53 +325,58 @@ function CreateCoursePage({ navigate }) {
         data.append('description', formData.description);
         data.append('category', formData.category);
         data.append('price', formData.price);
-        data.append('createdBy', 'Admin'); // Hardcoded or from context
+        data.append('createdBy', 'Admin');
 
         if (formData.thumbnail) data.append('thumbnail', formData.thumbnail);
-        if (formData.promoVideo) data.append('video', formData.promoVideo); // backend expects 'video'
+        if (formData.promoVideo) data.append('video', formData.promoVideo);
         if (formData.notes) data.append('notes', formData.notes);
 
-        // Replace with your actual backend URL
-        const response = await fetch('http://localhost:3000/api/courses', {
-          method: 'POST',
+        const url = isEdit ? `http://localhost:3000/api/courses/${courseId}` : 'http://localhost:3000/api/courses';
+        const method = isEdit ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+          method: method,
           body: data,
         });
 
         if (!response.ok) {
-          throw new Error('Failed to create course');
+          throw new Error(`Failed to ${isEdit ? 'update' : 'create'} course`);
         }
 
         const result = await response.json();
-        const courseId = result.courseId;
 
-        // Add to local context (optional, or fetch fresh list)
-        // We'll construct a local object to keep UI responsive without full re-fetch if desired
-        const newCourse = {
-          id: courseId,
-          ...formData,
-          createdBy: 'Admin',
-          createdAt: new Date().toISOString(),
-          lessons: [],
-          // Store URLs if returned, otherwise we just have the files locally for now
-          thumbnailUrl: result.urls?.thumbnail,
-          videoUrl: result.urls?.video,
-          notesUrl: result.urls?.notes
-        };
-
-        addCourse(newCourse);
-        navigate('videos', courseId);
+        if (isEdit) {
+          alert("Course updated successfully");
+          navigate('list');
+        } else {
+          const newCourseId = result.courseId;
+          const newCourse = {
+            id: newCourseId,
+            ...formData,
+            createdBy: 'Admin',
+            createdAt: new Date().toISOString(),
+            playlists: [],
+            thumbnailUrl: result.urls?.thumbnail,
+            videoUrl: result.urls?.video,
+            notesUrl: result.urls?.notes
+          };
+          addCourse(newCourse);
+          navigate('playlists', newCourseId);
+        }
       } catch (error) {
-        console.error("Error creating course:", error);
-        alert("Failed to create course. See console for details.");
+        console.error(`Error ${isEdit ? 'updating' : 'creating'} course:`, error);
+        alert(`Failed to ${isEdit ? 'update' : 'create'} course. See console for details.`);
       }
     }
   };
 
+  if (loading) return <div className="text-center py-12">Loading course data...</div>;
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-900">Create New Course</h2>
-        <p className="mt-2 text-gray-600">Fill in the details to create a new course</p>
+        <h2 className="text-3xl font-bold text-gray-900">{isEdit ? 'Edit Course' : 'Create New Course'}</h2>
+        <p className="mt-2 text-gray-600">{isEdit ? 'Update course details and content' : 'Fill in the details to create a new course'}</p>
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-8 space-y-6">
@@ -410,7 +612,7 @@ function CreateCoursePage({ navigate }) {
             onClick={handleSubmit}
             className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
           >
-            Create Course & Add Videos
+            {isEdit ? 'Save Changes' : 'Create Course & Add Playlists'}
           </button>
         </div>
       </div>
@@ -418,241 +620,678 @@ function CreateCoursePage({ navigate }) {
   );
 }
 
-// Upload Videos Component
-function UploadVideosPage({ courseId, navigate }) {
-  const { courses, updateCourse } = useCourses();
-  const course = courses[courseId];
-  const [lessons, setLessons] = useState(course?.lessons || []);
-  const [newLesson, setNewLesson] = useState({ title: '', video: null });
+// NEW: Manage Playlists Page
+function ManagePlaylistsPage({ courseId, navigate }) {
+  const { courses } = useCourses();
+  const [course, setCourse] = useState(courses[courseId] || null);
+  const [playlists, setPlaylists] = useState([]);
+  const [newPlaylist, setNewPlaylist] = useState({ title: '', description: '' });
+  const [selectedPlaylist, setSelectedPlaylist] = useState(null);
+  const [editingPlaylist, setEditingPlaylist] = useState(null);
+  const [editingVideo, setEditingVideo] = useState(null);
+  const [previewVideo, setPreviewVideo] = useState(null); // For video preview modal
+  const [newVideo, setNewVideo] = useState({
+    title: '',
+    description: '',
+    video: null,
+    thumbnail: null,
+    notes: null,
+    duration: ''
+  });
   const [uploadProgress, setUploadProgress] = useState({});
+  const [loading, setLoading] = useState(true);
 
-  const handleAddLesson = async () => {
-    if (newLesson.title && newLesson.video) {
-      const lessonId = Date.now(); // Temp ID for UI until saved
+  useEffect(() => {
+    if (courseId) {
+      fetchCourseAndPlaylists();
+    }
+  }, [courseId]);
 
-      // Initial UI update
-      setUploadProgress(prev => ({ ...prev, [lessonId]: 0 }));
-
-      try {
-        const formData = new FormData();
-        formData.append('courseId', courseId);
-        formData.append('title', newLesson.title);
-        formData.append('duration', '00:00'); // Valid duration calculation requires getting metadata from file
-        formData.append('video', newLesson.video);
-
-        // Fake progress for visual feedback because basic fetch doesn't support progress events easily
-        const interval = setInterval(() => {
-          setUploadProgress(prev => {
-            const current = prev[lessonId] || 0;
-            return current < 90 ? { ...prev, [lessonId]: current + 10 } : prev;
-          });
-        }, 500);
-
-        const response = await fetch('http://localhost:3000/api/admin/upload-video', {
-          method: 'POST',
-          body: formData
-        });
-
-        clearInterval(interval);
-
-        if (!response.ok) throw new Error('Upload failed');
-
-        const result = await response.json();
-
-        setUploadProgress(prev => ({ ...prev, [lessonId]: 100 }));
-
-        const lesson = {
-          id: result.id || lessonId, // Use backend ID if returned, else temp
-          title: newLesson.title,
-          videoFile: newLesson.video.name,
-          videoUrl: result.videoUrl,
-          duration: result.duration || '00:00'
-        };
-
-        setLessons(prev => [...prev, lesson]);
-        setNewLesson({ title: '', video: null });
-
-        // Update global store context
-        const updatedCourse = { ...course, lessons: [...(course.lessons || []), lesson] };
-        updateCourse(courseId, { lessons: updatedCourse.lessons });
-
-      } catch (error) {
-        console.error("Upload error:", error);
-        alert("Failed to upload video");
-        setUploadProgress(prev => {
-          const newProgress = { ...prev };
-          delete newProgress[lessonId];
-          return newProgress;
-        });
+  const fetchCourseAndPlaylists = async () => {
+    setLoading(true);
+    try {
+      // Fetch full course details including playlists
+      const response = await fetch(`http://localhost:3000/api/courses/${courseId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setCourse(data.course);
+        setPlaylists(data.playlists || []);
+      } else {
+        console.error("Failed to fetch course data");
       }
+    } catch (error) {
+      console.error("Error fetching course and playlists:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleRemoveLesson = (lessonId) => {
-    setLessons(prev => prev.filter(l => l.id !== lessonId));
-    setUploadProgress(prev => {
-      const newProgress = { ...prev };
-      delete newProgress[lessonId];
-      return newProgress;
-    });
+  const fetchPlaylists = async () => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/courses/${courseId}/playlists`);
+      if (response.ok) {
+        const data = await response.json();
+        setPlaylists(data.playlists || []);
+      }
+    } catch (error) {
+      console.error("Error fetching playlists:", error);
+    }
   };
 
-  const handleFinish = () => {
-    updateCourse(courseId, { lessons });
-    navigate('preview', courseId);
+  const handleCreatePlaylist = async () => {
+    if (!newPlaylist.title.trim()) {
+      alert("Playlist title is required");
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:3000/api/playlists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courseId,
+          title: newPlaylist.title,
+          description: newPlaylist.description,
+          orderIndex: playlists.length
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to create playlist');
+
+      const result = await response.json();
+      setPlaylists(prev => [...prev, result.playlist]);
+      setNewPlaylist({ title: '', description: '' });
+      alert("Playlist created successfully!");
+    } catch (error) {
+      console.error("Error creating playlist:", error);
+      alert("Failed to create playlist");
+    }
   };
+
+  const handleUpdatePlaylist = async (id) => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/playlists/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingPlaylist)
+      });
+
+      if (response.ok) {
+        alert("Playlist updated");
+        setEditingPlaylist(null);
+        fetchPlaylists();
+      }
+    } catch (error) {
+      alert("Error updating playlist");
+    }
+  };
+
+  const handleDeletePlaylist = async (id) => {
+    if (!confirm("Are you sure? This will delete all videos in this playlist.")) return;
+    try {
+      const response = await fetch(`http://localhost:3000/api/playlists/${id}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        alert("Playlist deleted");
+        fetchPlaylists();
+        if (selectedPlaylist?.id === id) setSelectedPlaylist(null);
+      }
+    } catch (error) {
+      alert("Error deleting playlist");
+    }
+  };
+
+  const handleUploadVideo = async () => {
+    if (!selectedPlaylist) {
+      alert("Please select a playlist first");
+      return;
+    }
+
+    if (!newVideo.title || !newVideo.video) {
+      alert("Video title and file are required");
+      return;
+    }
+
+    const videoId = Date.now();
+    setUploadProgress(prev => ({ ...prev, [videoId]: 0 }));
+
+    try {
+      const formData = new FormData();
+      formData.append('courseId', courseId);
+      formData.append('playlistId', selectedPlaylist.id);
+      formData.append('title', newVideo.title);
+      formData.append('description', newVideo.description);
+      formData.append('duration', newVideo.duration || '00:00');
+
+      // Main Files
+      formData.append('video', newVideo.video);
+      if (newVideo.thumbnail) formData.append('thumbnail', newVideo.thumbnail);
+      if (newVideo.notes) formData.append('notes', newVideo.notes);
+
+      const interval = setInterval(() => {
+        setUploadProgress(prev => {
+          const current = prev[videoId] || 0;
+          return current < 90 ? { ...prev, [videoId]: current + 10 } : prev;
+        });
+      }, 500);
+
+      const response = await fetch('http://localhost:3000/api/admin/upload-video', {
+        method: 'POST',
+        body: formData
+      });
+
+      clearInterval(interval);
+
+      if (!response.ok) throw new Error('Upload failed');
+
+      const result = await response.json();
+      setUploadProgress(prev => ({ ...prev, [videoId]: 100 }));
+
+      // Refresh playlists to show new video
+      await fetchPlaylists();
+
+      setNewVideo({ title: '', description: '', video: null, thumbnail: null, notes: null, duration: '' });
+      alert("Video uploaded successfully!");
+
+      // Clear progress after 2 seconds
+      setTimeout(() => {
+        setUploadProgress(prev => {
+          const newProgress = { ...prev };
+          delete newProgress[videoId];
+          return newProgress;
+        });
+      }, 2000);
+
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert("Failed to upload video");
+      setUploadProgress(prev => {
+        const newProgress = { ...prev };
+        delete newProgress[videoId];
+        return newProgress;
+      });
+    }
+  };
+
+  const handleDeleteVideo = async (videoId) => {
+    if (!confirm("Are you sure you want to delete this video?")) return;
+    try {
+      const response = await fetch(`http://localhost:3000/api/admin/videos/${videoId}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        alert("Video deleted");
+        fetchPlaylists(); // Refresh list to update video counts/state
+      }
+    } catch (error) {
+      alert("Error deleting video");
+    }
+  };
+
+  const handleUpdateVideo = async (videoId) => {
+    try {
+      const formData = new FormData();
+      formData.append('title', editingVideo.title);
+      formData.append('description', editingVideo.description);
+      formData.append('duration', editingVideo.duration);
+      if (editingVideo.videoFile) formData.append('video', editingVideo.videoFile);
+      if (editingVideo.thumbnailFile) formData.append('thumbnail', editingVideo.thumbnailFile);
+      if (editingVideo.notesFile) formData.append('notes', editingVideo.notesFile);
+
+      const response = await fetch(`http://localhost:3000/api/admin/videos/${videoId}`, {
+        method: 'PUT',
+        body: formData
+      });
+
+      if (response.ok) {
+        alert("Video updated");
+        setEditingVideo(null);
+        fetchPlaylists();
+      }
+    } catch (error) {
+      alert("Error updating video");
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center py-12">Loading course content...</div>;
+  }
 
   if (!course) {
-    return <div className="text-center py-12">Course not found</div>;
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-xl font-bold text-red-600">Course not found</h2>
+        <button
+          onClick={() => navigate('list')}
+          className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg"
+        >
+          Back to Course List
+        </button>
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <div className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-900">Upload Course Videos</h2>
-        <p className="mt-2 text-gray-600">Course: {course.title}</p>
+        <h2 className="text-3xl font-bold text-gray-900">Manage Playlists & Videos</h2>
+        <p className="mt-2 text-gray-600">Course: <span className="font-semibold text-purple-600">{course.title}</span></p>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-8 space-y-6">
-        {/* Add Lesson */}
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">Add New Lesson</h3>
+      {playlists.length === 0 && (
+        <div className="mb-8 bg-purple-600 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
+          <div className="relative z-10 max-w-2xl">
+            <h3 className="text-2xl font-bold mb-2">Next Step: Build your course content 🚀</h3>
+            <p className="text-purple-100 mb-6">Your course has been created successfully! Now, organize your learning materials by creating **Playlists** (sections) and then uploading **Videos** to them.</p>
+            <div className="flex gap-4">
+              <div className="flex items-center gap-2 bg-purple-500/30 px-4 py-2 rounded-lg border border-purple-400/30 text-sm">
+                <span className="bg-white text-purple-600 w-6 h-6 rounded-full flex items-center justify-center font-bold">1</span>
+                Create a Playlist
+              </div>
+              <div className="flex items-center gap-2 bg-purple-500/30 px-4 py-2 rounded-lg border border-purple-400/30 text-sm">
+                <span className="bg-white text-purple-600 w-6 h-6 rounded-full flex items-center justify-center font-bold">2</span>
+                Upload Videos
+              </div>
+            </div>
+          </div>
+          <div className="absolute right-[-20px] bottom-[-20px] opacity-10">
+            <Video size={200} />
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Left: Create Playlist (remains same) */}
+        <div className="bg-white rounded-lg shadow-md p-6 space-y-6">
+          <h3 className="text-xl font-bold text-gray-900 flex items-center">
+            <List size={24} className="mr-2 text-purple-600" />
+            Create Playlist
+          </h3>
+
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Lesson Title</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Playlist Title</label>
               <input
                 type="text"
-                value={newLesson.title}
-                onChange={(e) => setNewLesson(prev => ({ ...prev, title: e.target.value }))}
+                value={newPlaylist.title}
+                onChange={(e) => setNewPlaylist(prev => ({ ...prev, title: e.target.value }))}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                placeholder="e.g., Introduction to React Hooks"
+                placeholder="e.g., HTML & CSS Basics"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Video File</label>
-              <div className="flex items-center space-x-3">
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={(e) => setNewLesson(prev => ({ ...prev, video: e.target.files[0] }))}
-                  className="hidden"
-                  id="video-upload"
-                />
-                <label
-                  htmlFor="video-upload"
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-200"
-                >
-                  Choose Video
-                </label>
-                {newLesson.video && (
-                  <span className="text-sm text-gray-600">{newLesson.video.name}</span>
-                )}
-              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
+              <textarea
+                value={newPlaylist.description}
+                onChange={(e) => setNewPlaylist(prev => ({ ...prev, description: e.target.value }))}
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                placeholder="Brief description of this playlist..."
+              />
             </div>
 
             <button
-              onClick={handleAddLesson}
-              disabled={!newLesson.title || !newLesson.video}
-              className="w-full flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              onClick={handleCreatePlaylist}
+              className="w-full flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
             >
               <Plus size={20} className="mr-2" />
-              Add Lesson
+              Create Playlist
             </button>
+          </div>
+
+          {/* Playlists List */}
+          <div className="border-t pt-6">
+            <h4 className="font-semibold text-gray-900 mb-4">Playlists ({playlists.length})</h4>
+            <div className="space-y-2">
+              {playlists.map((playlist, index) => (
+                <div
+                  key={playlist.id}
+                  className={`p-4 border rounded-lg cursor-pointer transition ${selectedPlaylist?.id === playlist.id
+                    ? 'border-purple-500 bg-purple-50'
+                    : 'border-gray-200 hover:border-purple-300'
+                    }`}
+                  onClick={() => setSelectedPlaylist(playlist)}
+                >
+                  {editingPlaylist?.id === playlist.id ? (
+                    <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        className="w-full px-2 py-1 border rounded"
+                        value={editingPlaylist.title}
+                        onChange={e => setEditingPlaylist({ ...editingPlaylist, title: e.target.value })}
+                      />
+                      <textarea
+                        className="w-full px-2 py-1 border rounded"
+                        value={editingPlaylist.description}
+                        onChange={e => setEditingPlaylist({ ...editingPlaylist, description: e.target.value })}
+                      />
+                      <div className="flex gap-2">
+                        <button onClick={() => handleUpdatePlaylist(playlist.id)} className="bg-green-600 text-white px-3 py-1 rounded text-sm">Save</button>
+                        <button onClick={() => setEditingPlaylist(null)} className="bg-gray-400 text-white px-3 py-1 rounded text-sm">Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {index + 1}. {playlist.title}
+                        </p>
+                        {playlist.description && (
+                          <p className="text-sm text-gray-500 mt-1">{playlist.description}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingPlaylist(playlist);
+                          }}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePlaylist(playlist.id);
+                          }}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {playlists.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No playlists created yet
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Lessons List */}
-        <div>
-          <h3 className="text-lg font-semibold mb-4">Course Lessons ({lessons.length})</h3>
-          <div className="space-y-3">
-            {lessons.map((lesson, index) => (
-              <div key={lesson.id} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <span className="flex items-center justify-center w-8 h-8 bg-purple-100 text-purple-600 rounded-full text-sm font-semibold">
-                        {index + 1}
-                      </span>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">{lesson.title}</h4>
-                        <div className="flex items-center space-x-4 mt-1">
-                          <span className="text-sm text-gray-500 flex items-center">
-                            <Video size={14} className="mr-1" />
-                            {lesson.videoFile}
-                          </span>
-                          <span className="text-sm text-gray-500">{lesson.duration}</span>
-                        </div>
+        {/* Right: Upload Videos */}
+        <div className="bg-white rounded-lg shadow-md p-6 space-y-6">
+          <h3 className="text-xl font-bold text-gray-900 flex items-center">
+            <Video size={24} className="mr-2 text-purple-600" />
+            Upload Video
+          </h3>
+
+          {selectedPlaylist ? (
+            <>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-gray-600">Uploading to:</p>
+                <p className="font-semibold text-purple-900">{selectedPlaylist.title}</p>
+              </div>
+
+              <div className="space-y-4 max-h-[600px] overflow-y-auto px-1">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Video Title</label>
+                  <input
+                    type="text"
+                    value={newVideo.title}
+                    onChange={(e) => setNewVideo(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    placeholder="e.g., Introduction to HTML"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Video Description</label>
+                  <textarea
+                    value={newVideo.description}
+                    onChange={(e) => setNewVideo(prev => ({ ...prev, description: e.target.value }))}
+                    rows={2}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    placeholder="Briefly explain what's in this video..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Video File</label>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={(e) => setNewVideo(prev => ({ ...prev, video: e.target.files[0] }))}
+                      className="text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Video Thumbnail</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setNewVideo(prev => ({ ...prev, thumbnail: e.target.files[0] }))}
+                      className="text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Notes (PDF)</label>
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => setNewVideo(prev => ({ ...prev, notes: e.target.files[0] }))}
+                      className="text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Duration</label>
+                    <input
+                      type="text"
+                      value={newVideo.duration}
+                      onChange={(e) => setNewVideo(prev => ({ ...prev, duration: e.target.value }))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      placeholder="e.g., 10:45"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleUploadVideo}
+                  disabled={!newVideo.title || !newVideo.video}
+                  className="w-full flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300"
+                >
+                  <Upload size={18} className="mr-2" />
+                  Upload & Add to Playlist
+                </button>
+
+                {/* Uploaded Videos List in Selected Playlist */}
+                <div className="mt-8 pt-6 border-t border-gray-100">
+                  <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                    <Video size={18} className="mr-2 text-purple-600" />
+                    Videos in this Playlist
+                  </h4>
+                  <div className="space-y-3">
+                    {playlists.find(p => p.id === selectedPlaylist.id)?.videos?.map((vid, idx) => (
+                      <div key={vid.id} className="p-3 border rounded-lg bg-gray-50">
+                        {editingVideo?.id === vid.id ? (
+                          <div className="space-y-3">
+                            <input className="w-full px-2 py-1 border rounded" value={editingVideo.title} onChange={e => setEditingVideo({ ...editingVideo, title: e.target.value })} />
+                            <textarea className="w-full px-2 py-1 border rounded" value={editingVideo.description} onChange={e => setEditingVideo({ ...editingVideo, description: e.target.value })} />
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-xs block mb-1">New Video</label>
+                                <input type="file" className="text-xs" onChange={e => setEditingVideo({ ...editingVideo, videoFile: e.target.files[0] })} />
+                              </div>
+                              <div>
+                                <label className="text-xs block mb-1">New Thumbnail</label>
+                                <input type="file" className="text-xs" onChange={e => setEditingVideo({ ...editingVideo, thumbnailFile: e.target.files[0] })} />
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button onClick={() => handleUpdateVideo(vid.id)} className="bg-green-600 text-white px-3 py-1 rounded text-sm">Save</button>
+                              <button onClick={() => setEditingVideo(null)} className="bg-gray-400 text-white px-3 py-1 rounded text-sm">Cancel</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-16 h-10 bg-gray-200 rounded overflow-hidden">
+                                {vid.thumbnail && <img src={vid.thumbnail} className="w-full h-full object-cover" />}
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">{idx + 1}. {vid.title}</p>
+                                <p className="text-xs text-gray-500">{vid.duration || '00:00'}</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => setPreviewVideo(vid)}
+                                className="p-1.5 text-purple-600 hover:bg-purple-100 rounded"
+                                title="Preview Video"
+                              >
+                                <PlayCircle size={16} />
+                              </button>
+                              <button onClick={() => setEditingVideo(vid)} className="p-1.5 text-blue-600 hover:bg-blue-100 rounded">
+                                <Eye size={16} />
+                              </button>
+                              <button onClick={() => handleDeleteVideo(vid.id)} className="p-1.5 text-red-600 hover:bg-red-100 rounded">
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {(!playlists.find(p => p.id === selectedPlaylist.id)?.videos || playlists.find(p => p.id === selectedPlaylist.id)?.videos.length === 0) && (
+                      <p className="text-center py-4 text-sm text-gray-500">No videos in this playlist yet</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Video Preview Modal */}
+                {previewVideo && (
+                  <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-4xl overflow-hidden relative">
+                      <button
+                        onClick={() => setPreviewVideo(null)}
+                        className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-black p-2 rounded-full z-10"
+                      >
+                        <Plus size={24} className="rotate-45" />
+                      </button>
+                      <div className="aspect-video bg-black">
+                        <video src={previewVideo.video_url} controls className="w-full h-full" autoPlay />
+                      </div>
+                      <div className="p-6">
+                        <h3 className="text-xl font-bold">{previewVideo.title}</h3>
+                        <p className="text-gray-600 mt-1">{previewVideo.description}</p>
                       </div>
                     </div>
+                  </div>
+                )}
 
-                    {uploadProgress[lesson.id] !== undefined && uploadProgress[lesson.id] < 100 && (
-                      <div className="mt-2">
+                {/* Upload Progress */}
+                {Object.keys(uploadProgress).length > 0 && (
+                  <div className="mt-4">
+                    {Object.entries(uploadProgress).map(([id, progress]) => (
+                      <div key={id} className="mb-2">
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${uploadProgress[lesson.id]}%` }}
+                            style={{ width: `${progress}%` }}
                           />
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">Uploading... {uploadProgress[lesson.id]}%</p>
+                        <p className="text-xs text-gray-500 mt-1">Uploading... {progress}%</p>
                       </div>
-                    )}
+                    ))}
                   </div>
-
-                  <button
-                    onClick={() => handleRemoveLesson(lesson.id)}
-                    className="ml-4 p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
+                )}
               </div>
-            ))}
-
-            {lessons.length === 0 && (
-              <div className="text-center py-12 text-gray-500">
-                No lessons added yet. Add your first lesson above.
-              </div>
-            )}
-          </div>
+            </>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              <List size={48} className="mx-auto mb-4 opacity-50" />
+              <p>Select a playlist from the left to upload videos</p>
+            </div>
+          )}
         </div>
+      </div>
 
-        {/* Actions */}
-        <div className="flex justify-between pt-4 border-t">
-          <button
-            onClick={() => navigate('create')}
-            className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-          >
-            Back to Course Details
-          </button>
-          <button
-            onClick={handleFinish}
-            disabled={lessons.length === 0}
-            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-          >
-            Finish & Preview Course
-          </button>
-        </div>
+      {/* Actions */}
+      <div className="flex justify-between mt-8">
+        <button
+          onClick={() => navigate('create')}
+          className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+        >
+          Back to Course Details
+        </button>
+        <button
+          onClick={() => navigate('preview', courseId)}
+          className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+        >
+          Preview Course
+        </button>
       </div>
     </div>
   );
 }
 
-// Course Preview Component
+// Course Preview Component (simplified - would need to fetch actual data)
 function CoursePreviewPage({ courseId, navigate }) {
   const { courses } = useCourses();
   const course = courses[courseId];
+  const [courseData, setCourseData] = useState(null);
 
-  if (!course) {
+  useEffect(() => {
+    if (courseId) {
+      fetchCourseData();
+    }
+  }, [courseId]);
+
+  const fetchCourseData = async () => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/courses/${courseId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setCourseData(data);
+      }
+    } catch (error) {
+      console.error("Error fetching course:", error);
+    }
+  };
+
+  const handlePublish = async () => {
+    const displayCourse = courseData?.course || course;
+    const newStatus = displayCourse.status === 'published' ? 'draft' : 'published';
+
+    try {
+      const response = await fetch(`http://localhost:3000/api/admin/courses/${courseId}/publish`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (response.ok) {
+        alert(`Course ${newStatus} successfully!`);
+        fetchCourseData(); // Refresh preview
+      }
+    } catch (error) {
+      console.error("Publish error:", error);
+    }
+  };
+
+  if (!course && !courseData) {
     return <div className="text-center py-12">Course not found</div>;
   }
+
+  const displayCourse = courseData?.course || course;
+  const playlists = courseData?.playlists || [];
 
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-gray-900">Course Preview</h2>
-          <p className="mt-2 text-gray-600">Review your course before publishing</p>
+          <p className="mt-2 text-gray-600">Review your course structure</p>
         </div>
         <button
           onClick={() => navigate('create')}
@@ -662,122 +1301,73 @@ function CoursePreviewPage({ courseId, navigate }) {
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        {/* Course Header */}
-        <div className="relative h-80 bg-gray-900">
-          {course.thumbnail && (
-            <img
-              src={URL.createObjectURL(course.thumbnail)}
-              alt={course.title}
-              className="w-full h-full object-cover opacity-90"
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
-            <div className="max-w-4xl">
-              <span className="inline-block px-3 py-1 bg-purple-600 rounded-full text-sm font-medium mb-3">
-                {course.category}
-              </span>
-              <h1 className="text-4xl font-bold mb-2">{course.title}</h1>
-              <p className="text-xl text-gray-200">Created by {course.createdBy}</p>
-            </div>
+      <div className="bg-white rounded-lg shadow-md p-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">{displayCourse.title}</h1>
+        <p className="text-gray-700 mb-6">{displayCourse.description}</p>
+
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <p className="text-sm text-gray-600">Price</p>
+            <p className="text-2xl font-bold text-purple-600">${displayCourse.price}</p>
+          </div>
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <p className="text-sm text-gray-600">Category</p>
+            <p className="text-lg font-semibold">{displayCourse.category}</p>
+          </div>
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <p className="text-sm text-gray-600">Playlists</p>
+            <p className="text-lg font-semibold">{playlists.length}</p>
           </div>
         </div>
 
-        {/* Course Details */}
-        <div className="p-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">About This Course</h3>
-                <p className="text-gray-700 leading-relaxed">{course.description}</p>
-              </div>
-
-              {course.promoVideo && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
-                  <div className="flex items-center space-x-3">
-                    <Video className="text-purple-600" size={24} />
-                    <div>
-                      <p className="font-medium text-gray-900">Promotional Video</p>
-                      <p className="text-sm text-gray-600">{course.promoVideo.name}</p>
-                    </div>
-                  </div>
-                </div>
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Course Structure</h3>
+        <div className="space-y-4">
+          {playlists.map((playlist, pIndex) => (
+            <div key={playlist.id} className="border border-gray-200 rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 mb-2">
+                Playlist {pIndex + 1}: {playlist.title}
+              </h4>
+              {playlist.description && (
+                <p className="text-sm text-gray-600 mb-3">{playlist.description}</p>
               )}
-
-              {course.notes && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-3">
-                    <FileText className="text-blue-600" size={24} />
-                    <div>
-                      <p className="font-medium text-gray-900">Course Notes</p>
-                      <p className="text-sm text-gray-600">{course.notes.name}</p>
-                    </div>
+              <div className="pl-4 space-y-2">
+                {playlist.videos && playlist.videos.map((video, vIndex) => (
+                  <div key={video.id} className="flex items-center text-sm text-gray-700">
+                    <Video size={16} className="mr-2 text-purple-600" />
+                    <span>Video {vIndex + 1}: {video.title}</span>
+                    {video.duration && <span className="ml-auto text-gray-500">{video.duration}</span>}
                   </div>
-                </div>
-              )}
-
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Course Content</h3>
-                <div className="space-y-2">
-                  {course.lessons.map((lesson, index) => (
-                    <div key={lesson.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                      <div className="flex items-center space-x-4">
-                        <span className="flex items-center justify-center w-10 h-10 bg-purple-100 text-purple-600 rounded-full font-semibold">
-                          {index + 1}
-                        </span>
-                        <div>
-                          <p className="font-medium text-gray-900">{lesson.title}</p>
-                          <p className="text-sm text-gray-500">{lesson.videoFile}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        <span className="text-sm text-gray-500">{lesson.duration}</span>
-                        <Video size={20} className="text-gray-400" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                ))}
+                {(!playlist.videos || playlist.videos.length === 0) && (
+                  <p className="text-sm text-gray-500 italic">No videos in this playlist yet</p>
+                )}
               </div>
             </div>
+          ))}
 
-            {/* Sidebar */}
-            <div className="space-y-4">
-              <div className="bg-gray-50 rounded-lg p-6 sticky top-4">
-                <div className="text-center mb-6">
-                  <p className="text-sm text-gray-600 mb-2">Course Price</p>
-                  <p className="text-4xl font-bold text-purple-600">${course.price}</p>
-                </div>
-
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Total Lessons</span>
-                    <span className="font-semibold">{course.lessons.length}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Category</span>
-                    <span className="font-semibold">{course.category}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Instructor</span>
-                    <span className="font-semibold">{course.createdBy}</span>
-                  </div>
-                </div>
-
-                <button className="w-full py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition">
-                  Publish Course
-                </button>
-
-                <button
-                  onClick={() => navigate('videos', courseId)}
-                  className="w-full mt-3 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
-                >
-                  Edit Lessons
-                </button>
-              </div>
+          {playlists.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No playlists created yet
             </div>
-          </div>
+          )}
+        </div>
+
+        <div className="mt-8 flex justify-between">
+          <button
+            onClick={() => navigate('playlists', courseId)}
+            className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+          >
+            Edit Playlists
+          </button>
+          <button
+            onClick={handlePublish}
+            className={`px-6 py-3 rounded-lg text-white font-bold transition ${(courseData?.course || course).status === 'published'
+              ? 'bg-yellow-600 hover:bg-yellow-700'
+              : 'bg-green-600 hover:bg-green-700'
+              }`}
+          >
+            {(courseData?.course || course).status === 'published' ? 'Unpublish Course' : 'Publish Course'}
+          </button>
         </div>
       </div>
     </div>
