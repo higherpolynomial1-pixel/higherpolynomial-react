@@ -24,7 +24,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post("http://localhost:3000/api/login", {
+      const response = await axios.post("https://higherpolynomial-node.vercel.app/api/login", {
         email: emailInput,
         password
       });
@@ -45,7 +45,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post("http://localhost:3000/api/forgot-password", { email: emailInput });
+      await axios.post("https://higherpolynomial-node.vercel.app/api/forgot-password", { email: emailInput });
       toast.success("OTP sent to your email!");
       setIsOtpSent(true);
     } catch (error) {
@@ -59,7 +59,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post("http://localhost:3000/api/reset-password", {
+      await axios.post("https://higherpolynomial-node.vercel.app/api/reset-password", {
         email: emailInput,
         otp,
         newPassword

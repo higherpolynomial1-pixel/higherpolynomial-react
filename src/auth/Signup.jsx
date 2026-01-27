@@ -26,7 +26,7 @@ const Signup = () => {
         setLoading(true);
 
         try {
-            const response = await axios.post('http://localhost:3000/api/signup', formData);
+            const response = await axios.post('https://higherpolynomial-node.vercel.app/api/signup', formData);
             if (response.status === 200) {
                 toast.success('OTP sent to your email!');
                 setIsOtpSent(true);
@@ -43,7 +43,7 @@ const Signup = () => {
         setLoading(true);
 
         try {
-            const response = await axios.post('http://localhost:3000/api/verify-otp', {
+            const response = await axios.post('https://higherpolynomial-node.vercel.app/api/verify-otp', {
                 email: formData.email,
                 otp: otp
             });
