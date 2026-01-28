@@ -29,6 +29,36 @@ function useCourses() {
   return useContext(CourseContext);
 }
 
+// Helper for direct S3 uploads via Presigned URLs
+const uploadToS3Directly = async (file, onProgress) => {
+  if (!file) return null;
+  if (typeof file === 'string') return file; // Already an S3 URL
+  const contentType = file.type || 'application/octet-stream';
+  try {
+    const resp = await fetch(`https://higherpolynomial-node.vercel.app/api/admin/generate-presigned-url?fileName=${encodeURIComponent(file.name)}&fileType=${encodeURIComponent(contentType)}`);
+    if (!resp.ok) throw new Error("Could not generate upload URL");
+    const { uploadUrl, publicUrl } = await resp.json();
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", uploadUrl);
+      xhr.setRequestHeader("Content-Type", contentType);
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && onProgress) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          onProgress(percent);
+        }
+      };
+      xhr.onload = () => xhr.status === 200 ? resolve(publicUrl) : reject(new Error("S3 Upload Failed"));
+      xhr.onerror = () => reject(new Error("S3 Upload Error"));
+      xhr.send(file);
+    });
+  } catch (error) {
+    console.error("Direct Upload Error:", error);
+    throw error;
+  }
+};
+
 // Main App Component with Routing
 export default function App() {
   const [currentPage, setCurrentPage] = useState('create');
@@ -320,23 +350,28 @@ function CreateCoursePage({ navigate, isEdit = false, courseId = null }) {
   const handleSubmit = async () => {
     if (validateForm()) {
       try {
-        const data = new FormData();
-        data.append('title', formData.title);
-        data.append('description', formData.description);
-        data.append('category', formData.category);
-        data.append('price', formData.price);
-        data.append('createdBy', 'Admin');
-
-        if (formData.thumbnail) data.append('thumbnail', formData.thumbnail);
-        if (formData.promoVideo) data.append('video', formData.promoVideo);
-        if (formData.notes) data.append('notes', formData.notes);
+        setLoading(true);
+        // 1. Upload files directly to S3
+        const thumbnailUrl = await uploadToS3Directly(formData.thumbnail);
+        const videoUrl = await uploadToS3Directly(formData.promoVideo);
+        const notesUrl = await uploadToS3Directly(formData.notes);
 
         const url = isEdit ? `https://higherpolynomial-node.vercel.app/api/courses/${courseId}` : 'https://higherpolynomial-node.vercel.app/api/courses';
         const method = isEdit ? 'PUT' : 'POST';
 
         const response = await fetch(url, {
           method: method,
-          body: data,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: formData.title,
+            description: formData.description,
+            category: formData.category,
+            price: formData.price,
+            createdBy: 'Admin',
+            thumbnailUrl,
+            videoUrl,
+            notesUrl
+          }),
         });
 
         if (!response.ok) {
@@ -757,33 +792,32 @@ function ManagePlaylistsPage({ courseId, navigate }) {
     setUploadProgress(prev => ({ ...prev, [videoId]: 0 }));
 
     try {
-      const formData = new FormData();
-      formData.append('courseId', courseId);
-      formData.append('playlistId', selectedPlaylist.id);
-      formData.append('title', newVideo.title);
-      formData.append('description', newVideo.description);
-      formData.append('duration', newVideo.duration || '00:00');
-
-      // Main Files
-      formData.append('video', newVideo.video);
-      if (newVideo.thumbnail) formData.append('thumbnail', newVideo.thumbnail);
-      if (newVideo.notes) formData.append('notes', newVideo.notes);
-
-      const interval = setInterval(() => {
-        setUploadProgress(prev => {
-          const current = prev[videoId] || 0;
-          return current < 90 ? { ...prev, [videoId]: current + 10 } : prev;
-        });
-      }, 500);
-
-      const response = await fetch('https://higherpolynomial-node.vercel.app/api/admin/upload-video', {
-        method: 'POST',
-        body: formData
+      // 1. Upload files directly to S3
+      const videoUrl = await uploadToS3Directly(newVideo.video, (p) => {
+        setUploadProgress(prev => ({ ...prev, [videoId]: p }));
       });
 
-      clearInterval(interval);
+      // Simple progress for others as they are usually small
+      const thumbnailUrl = await uploadToS3Directly(newVideo.thumbnail);
+      const notesUrl = await uploadToS3Directly(newVideo.notes);
 
-      if (!response.ok) throw new Error('Upload failed');
+      // 2. Send metadata and S3 URLs to backend
+      const response = await fetch('https://higherpolynomial-node.vercel.app/api/admin/upload-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courseId,
+          playlistId: selectedPlaylist.id,
+          title: newVideo.title,
+          description: newVideo.description,
+          duration: newVideo.duration || '00:00',
+          videoUrl,
+          thumbnailUrl,
+          notesUrl
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to save video metadata');
 
       const result = await response.json();
       setUploadProgress(prev => ({ ...prev, [videoId]: 100 }));
@@ -805,7 +839,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
 
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Failed to upload video");
+      alert(`Upload failed: ${error.message}`);
       setUploadProgress(prev => {
         const newProgress = { ...prev };
         delete newProgress[videoId];
@@ -831,26 +865,39 @@ function ManagePlaylistsPage({ courseId, navigate }) {
 
   const handleUpdateVideo = async (videoId) => {
     try {
-      const formData = new FormData();
-      formData.append('title', editingVideo.title);
-      formData.append('description', editingVideo.description);
-      formData.append('duration', editingVideo.duration);
-      if (editingVideo.videoFile) formData.append('video', editingVideo.videoFile);
-      if (editingVideo.thumbnailFile) formData.append('thumbnail', editingVideo.thumbnailFile);
-      if (editingVideo.notesFile) formData.append('notes', editingVideo.notesFile);
+      setLoading(true);
 
+      // 1. Upload new files if provided
+      const videoUrl = editingVideo.videoFile ? await uploadToS3Directly(editingVideo.videoFile) : undefined;
+      const thumbnailUrl = editingVideo.thumbnailFile ? await uploadToS3Directly(editingVideo.thumbnailFile) : undefined;
+      const notesUrl = editingVideo.notesFile ? await uploadToS3Directly(editingVideo.notesFile) : undefined;
+
+      // 2. Send update to backend
       const response = await fetch(`https://higherpolynomial-node.vercel.app/api/admin/videos/${videoId}`, {
         method: 'PUT',
-        body: formData
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editingVideo.title,
+          description: editingVideo.description,
+          duration: editingVideo.duration,
+          videoUrl,
+          thumbnailUrl,
+          notesUrl
+        })
       });
 
       if (response.ok) {
         alert("Video updated");
         setEditingVideo(null);
         fetchPlaylists();
+      } else {
+        throw new Error("Failed to update video");
       }
     } catch (error) {
-      alert("Error updating video");
+      console.error("Update error:", error);
+      alert(`Error updating video: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
