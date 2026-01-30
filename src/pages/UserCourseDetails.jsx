@@ -37,7 +37,7 @@ const UserCourseDetails = () => {
 
     if (loading) return (
         <div className="flex justify-center items-center h-screen bg-gray-50">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
     );
 
@@ -46,7 +46,7 @@ const UserCourseDetails = () => {
             <p className="text-xl font-semibold mb-4">{error || 'Course not found'}</p>
             <button
                 onClick={() => navigate('/dashboard')}
-                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
                 Back to Dashboard
             </button>
@@ -78,7 +78,7 @@ const UserCourseDetails = () => {
                                 {currentView !== 'course' && (
                                     <>
                                         <span>/</span>
-                                        <span className={`hover:underline cursor-pointer ${currentView === 'playlist' ? 'font-bold text-purple-600' : ''}`} onClick={() => setCurrentView('playlist')}>
+                                        <span className={`hover:underline cursor-pointer ${currentView === 'playlist' ? 'font-bold text-blue-600' : ''}`} onClick={() => setCurrentView('playlist')}>
                                             {selectedPlaylist?.title}
                                         </span>
                                     </>
@@ -86,7 +86,7 @@ const UserCourseDetails = () => {
                                 {currentView === 'video' && (
                                     <>
                                         <span>/</span>
-                                        <span className="font-bold text-purple-600 truncate max-w-[150px]">{activeLesson?.title}</span>
+                                        <span className="font-bold text-blue-600 truncate max-w-[150px]">{activeLesson?.title}</span>
                                     </>
                                 )}
                             </div>
@@ -107,7 +107,7 @@ const UserCourseDetails = () => {
                             </div>
                             <div className="p-8">
                                 <div className="flex items-center gap-2 mb-4">
-                                    <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">
+                                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">
                                         {course.category || 'General'}
                                     </span>
                                 </div>
@@ -115,7 +115,7 @@ const UserCourseDetails = () => {
                                 <p className="text-xl text-gray-600 leading-relaxed mb-6">{course.description}</p>
 
                                 {course.notes_pdf && (
-                                    <a href={course.notes_pdf} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-purple-600 font-semibold hover:underline bg-purple-50 px-4 py-2 rounded-lg">
+                                    <a href={course.notes_pdf} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-blue-600 font-semibold hover:underline bg-blue-50 px-4 py-2 rounded-lg">
                                         <FileText size={20} />
                                         Download Course Guide (PDF)
                                     </a>
@@ -126,7 +126,7 @@ const UserCourseDetails = () => {
                         {/* Playlists List */}
                         <div>
                             <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                                <BookOpen className="text-purple-600" />
+                                <BookOpen className="text-blue-600" />
                                 Course Content
                                 <span className="text-sm font-normal text-gray-500">({playlists.length} Playlists)</span>
                             </h3>
@@ -138,19 +138,19 @@ const UserCourseDetails = () => {
                                             setSelectedPlaylist(playlist);
                                             setCurrentView('playlist');
                                         }}
-                                        className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all cursor-pointer group"
+                                        className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
                                     >
                                         <div className="flex justify-between items-start mb-4">
-                                            <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center font-bold">
+                                            <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold">
                                                 {idx + 1}
                                             </div>
                                             <span className="text-xs font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded">
                                                 {playlist.videos?.length || 0} Videos
                                             </span>
                                         </div>
-                                        <h4 className="text-xl font-bold text-gray-900 group-hover:text-purple-600 transition-colors mb-2">{playlist.title}</h4>
+                                        <h4 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors mb-2">{playlist.title}</h4>
                                         <p className="text-gray-500 text-sm line-clamp-2">{playlist.description}</p>
-                                        <div className="mt-4 flex items-center text-purple-600 text-sm font-bold group-hover:translate-x-1 transition-transform">
+                                        <div className="mt-4 flex items-center text-blue-600 text-sm font-bold group-hover:translate-x-1 transition-transform">
                                             Explore Playlist <ChevronRight size={16} />
                                         </div>
                                     </div>
@@ -170,7 +170,7 @@ const UserCourseDetails = () => {
                             </div>
                             <button
                                 onClick={() => setCurrentView('course')}
-                                className="text-purple-600 font-semibold hover:underline flex items-center gap-1"
+                                className="text-blue-600 font-semibold hover:underline flex items-center gap-1"
                             >
                                 <ArrowLeft size={16} /> Back to Course
                             </button>
@@ -194,7 +194,7 @@ const UserCourseDetails = () => {
                                             </div>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <h4 className="text-lg font-bold text-gray-900 truncate group-hover:text-purple-600 transition-colors flex items-center gap-2">
+                                            <h4 className="text-lg font-bold text-gray-900 truncate group-hover:text-blue-600 transition-colors flex items-center gap-2">
                                                 <span className="text-gray-400 text-sm font-mono">{(idx + 1).toString().padStart(2, '0')}</span>
                                                 {video.title}
                                             </h4>
@@ -204,13 +204,13 @@ const UserCourseDetails = () => {
                                                     <Clock size={12} /> {video.duration || '00:00'}
                                                 </span>
                                                 {video.notes_pdf && (
-                                                    <span className="flex items-center gap-1 text-xs text-purple-500 font-medium">
+                                                    <span className="flex items-center gap-1 text-xs text-blue-500 font-medium">
                                                         <FileText size={12} /> Notes Included
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
-                                        <ChevronRight className="text-gray-300 group-hover:text-purple-500 group-hover:translate-x-1 transition-all" />
+                                        <ChevronRight className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
                                     </div>
                                 ))}
                             </div>
@@ -235,7 +235,7 @@ const UserCourseDetails = () => {
                                 </video>
                             ) : (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 backdrop-blur-sm p-6 text-center space-y-6">
-                                    <div className="w-20 h-20 bg-purple-600/20 rounded-full flex items-center justify-center text-purple-400 border border-purple-500/30">
+                                    <div className="w-20 h-20 bg-blue-600/20 rounded-full flex items-center justify-center text-blue-400 border border-blue-500/30">
                                         <PlayCircle size={40} />
                                     </div>
                                     <div className="space-y-2">
@@ -245,7 +245,7 @@ const UserCourseDetails = () => {
                                     <div className="flex gap-4">
                                         <button
                                             onClick={() => navigate('/login')}
-                                            className="px-8 py-3 bg-purple-600 text-white font-black rounded-xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/20"
+                                            className="px-8 py-3 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
                                         >
                                             Login to Watch
                                         </button>
@@ -265,7 +265,7 @@ const UserCourseDetails = () => {
                             <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
                                 <div className="space-y-4 flex-1">
                                     <div className="flex items-center gap-3">
-                                        <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold">
+                                        <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">
                                             {selectedPlaylist?.title}
                                         </span>
                                         <span className="text-sm text-gray-400">Lesson {selectedPlaylist?.videos?.findIndex(v => v.id === activeLesson.id) + 1}</span>
@@ -279,7 +279,7 @@ const UserCourseDetails = () => {
                                         <a
                                             href={activeLesson.notes_pdf}
                                             download
-                                            className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-purple-700 transition shadow-lg shadow-purple-200"
+                                            className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200"
                                         >
                                             <Download size={20} /> Download PDF Notes
                                         </a>
@@ -288,7 +288,7 @@ const UserCourseDetails = () => {
                                         onClick={() => setCurrentView('playlist')}
                                         className="w-full flex items-center justify-center gap-2 border-2 border-gray-100 text-gray-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-50 transition"
                                     >
-                                        <List size={20} className="text-purple-600" /> View Playlist
+                                        <List size={20} className="text-blue-600" /> View Playlist
                                     </button>
                                 </div>
                             </div>

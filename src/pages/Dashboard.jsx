@@ -41,7 +41,7 @@ const Dashboard = () => {
 
   if (loading) return (
     <div className="flex justify-center items-center py-20 min-h-[400px]">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-purple-600"></div>
+      <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600"></div>
     </div>
   );
 
@@ -59,12 +59,12 @@ const Dashboard = () => {
       {/* 1. Welcome & Stats Section (Only for Auth Users) */}
       {isAuthenticated ? (
         <div className="relative overflow-hidden rounded-[2.5rem] bg-[#0f172a] p-10 shadow-2xl">
-          <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[150%] bg-purple-600/30 blur-[100px] rounded-full"></div>
+          <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[150%] bg-blue-600/30 blur-[100px] rounded-full"></div>
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
             <div className="space-y-4 text-center md:text-left">
-              <span className="inline-block px-4 py-1.5 rounded-full bg-purple-500/20 text-purple-400 text-xs font-black uppercase tracking-widest">Student Portal</span>
+              <span className="inline-block px-4 py-1.5 rounded-full bg-blue-500/20 text-blue-400 text-xs font-black uppercase tracking-widest">Student Portal</span>
               <h1 className="text-4xl lg:text-5xl font-black text-white leading-tight">
-                Welcome back, <br /><span className="text-purple-400 italic">{user?.name || 'Explorer'}!</span>
+                Welcome back, <br /><span className="text-blue-400 italic">{user?.name || 'Explorer'}!</span>
               </h1>
               <p className="text-gray-300 text-lg font-medium max-w-md">
                 Ready to continue your learning journey? You have courses waiting for you.
@@ -91,7 +91,7 @@ const Dashboard = () => {
         </div>
       ) : (
         <div className="text-center py-6">
-          <h1 className="text-4xl font-black text-gray-900 mb-2">Explore Our <span className="text-purple-600">Courses</span></h1>
+          <h1 className="text-4xl font-black text-gray-900 mb-2">Explore Our <span className="text-blue-600">Courses</span></h1>
           <p className="text-gray-500 font-medium">Build your skills with the best expert-led content.</p>
         </div>
       )}
@@ -99,11 +99,11 @@ const Dashboard = () => {
       {/* 2. Search and Filter Bar */}
       <div className="flex flex-col lg:flex-row gap-6 justify-between items-center bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
         <div className="relative w-full lg:w-[400px] group">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-purple-500 transition-colors" size={20} />
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={20} />
           <input
             type="text"
             placeholder="What do you want to learn today?"
-            className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all font-medium"
+            className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-medium"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -115,7 +115,7 @@ const Dashboard = () => {
               key={category}
               onClick={() => setSelectedCategory(category)}
               className={`px-5 py-2.5 rounded-2xl text-sm font-bold whitespace-nowrap transition-all ${selectedCategory === category
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30 ring-2 ring-purple-600'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 ring-2 ring-blue-600'
                 : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                 }`}
             >
@@ -129,7 +129,7 @@ const Dashboard = () => {
       <div className="space-y-8">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-black text-gray-900 flex items-center gap-3">
-            <LayoutIcon className="text-purple-600" />
+            <LayoutIcon className="text-blue-600" />
             Available Courses
           </h2>
           <span className="text-sm font-bold text-gray-400">{filteredCourses.length} results</span>
@@ -162,7 +162,7 @@ const Dashboard = () => {
                     </span>
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
-                    <button className="w-full bg-purple-600 text-white font-bold py-3 rounded-2xl shadow-xl flex items-center justify-center gap-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                    <button className="w-full bg-blue-600 text-white font-bold py-3 rounded-2xl shadow-xl flex items-center justify-center gap-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
                       View Course <ChevronRight size={18} />
                     </button>
                   </div>
@@ -171,11 +171,11 @@ const Dashboard = () => {
                 {/* Content */}
                 <div className="p-6 flex-1 flex flex-col space-y-4">
                   <div className="flex justify-between items-center text-xs font-bold text-gray-400 uppercase tracking-widest leading-none">
-                    <span className="flex items-center gap-1"><PlayCircle size={14} className="text-purple-500" /> 12 Lessons</span>
+                    <span className="flex items-center gap-1"><PlayCircle size={14} className="text-blue-500" /> 12 Lessons</span>
                     <span className="flex items-center gap-1"><Clock size={14} className="text-orange-500" /> 8h 30m</span>
                   </div>
 
-                  <h3 className="text-xl font-black text-gray-900 line-clamp-1 group-hover:text-purple-600 transition-colors uppercase tracking-tight">
+                  <h3 className="text-xl font-black text-gray-900 line-clamp-1 group-hover:text-blue-600 transition-colors uppercase tracking-tight">
                     {course.title}
                   </h3>
                   <p className="text-gray-500 text-sm font-medium line-clamp-2 leading-relaxed flex-1">
@@ -187,7 +187,7 @@ const Dashboard = () => {
                       <Star size={16} fill="currentColor" />
                       <span>4.8</span>
                     </div>
-                    <div className="bg-purple-50 text-purple-700 px-4 py-1.5 rounded-xl font-black text-lg">
+                    <div className="bg-blue-50 text-blue-700 px-4 py-1.5 rounded-xl font-black text-lg">
                       ${course.price}
                     </div>
                   </div>
@@ -204,7 +204,7 @@ const Dashboard = () => {
             <p className="text-gray-500 font-medium mt-2">Try adjusting your search or filters.</p>
             <button
               onClick={() => { setSearchTerm(''); setSelectedCategory('All'); }}
-              className="mt-6 text-purple-600 font-black hover:underline underline-offset-8"
+              className="mt-6 text-blue-600 font-black hover:underline underline-offset-8"
             >
               Reset all filters
             </button>

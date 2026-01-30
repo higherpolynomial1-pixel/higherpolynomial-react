@@ -46,11 +46,11 @@ const Header = () => {
           {/* Left: Logo */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center group">
-              <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-200 group-hover:rotate-6 transition-transform text-white font-bold text-xl font-mono">
+              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200 group-hover:rotate-6 transition-transform text-white font-bold text-xl font-mono">
                 HP
               </div>
               <span className="ml-3 text-2xl font-black text-gray-900 tracking-tight">
-                Higher<span className="text-purple-600">Polynomia</span>
+                Higher<span className="text-blue-600">Polynomial</span>
               </span>
             </Link>
           </div>
@@ -62,8 +62,8 @@ const Header = () => {
                 key={link.path}
                 to={link.path}
                 className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${location.pathname === link.path
-                    ? 'bg-purple-50 text-purple-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
               >
                 <span className="text-xs opacity-70">{link.icon}</span>
@@ -84,7 +84,7 @@ const Header = () => {
                     className="flex items-center gap-3 p-1 pr-3 rounded-full hover:bg-gray-50 transition-colors group border border-transparent hover:border-gray-100"
                   >
                     <div className="relative">
-                      <FaUserCircle className="h-10 w-10 text-gray-300 group-hover:text-purple-400 transition-colors" />
+                      <FaUserCircle className="h-10 w-10 text-gray-300 group-hover:text-blue-400 transition-colors" />
                       <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
                     </div>
                     <div className="flex flex-col items-start">
@@ -106,7 +106,7 @@ const Header = () => {
                           <Link
                             key={link.path}
                             to={link.path}
-                            className="block px-4 py-2 text-sm text-gray-600 hover:bg-purple-50 hover:text-purple-700 font-medium"
+                            className="block px-4 py-2 text-sm text-gray-600 hover:bg-blue-50 hover:text-blue-700 font-medium"
                             onClick={() => setIsDropdownOpen(false)}
                           >
                             {link.name}
@@ -130,7 +130,7 @@ const Header = () => {
                   <Link to="/login" className="text-sm font-bold text-gray-600 hover:text-gray-900 px-4 py-2 transition-colors">
                     Login
                   </Link>
-                  <Link to="/signup" className="text-sm font-black bg-purple-600 text-white px-6 py-2.5 rounded-full hover:bg-purple-700 hover:shadow-lg hover:shadow-purple-500/30 transition-all">
+                  <Link to="/signup" className="text-sm font-black bg-blue-600 text-white px-6 py-2.5 rounded-full hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/30 transition-all">
                     Get Started
                   </Link>
                 </>
@@ -155,7 +155,7 @@ const Header = () => {
             <Link
               key={link.path}
               to={link.path}
-              className="flex items-center gap-3 p-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-purple-700 font-bold transition-all"
+              className="flex items-center gap-3 p-3 rounded-xl text-gray-600 hover:bg-blue-50 hover:text-blue-700 font-bold transition-all"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               {link.icon}
@@ -166,7 +166,7 @@ const Header = () => {
             <>
               <div className="h-[1px] bg-gray-100 my-2"></div>
               <Link to="/login" className="block text-center p-3 font-bold text-gray-600" onClick={() => setIsMobileMenuOpen(false)}>Login</Link>
-              <Link to="/signup" className="block text-center p-3 font-black bg-purple-600 text-white rounded-xl" onClick={() => setIsMobileMenuOpen(false)}>Get Started</Link>
+              <Link to="/signup" className="block text-center p-3 font-black bg-blue-600 text-white rounded-xl" onClick={() => setIsMobileMenuOpen(false)}>Get Started</Link>
             </>
           )}
           {isAuthenticated && (

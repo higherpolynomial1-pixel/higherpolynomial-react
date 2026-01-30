@@ -25,19 +25,19 @@ const LandingPage = () => {
 
             {/* 1. Hero Section */}
             <section className="relative pt-20 pb-20 lg:pt-32 lg:pb-40 overflow-hidden">
-                <div className="absolute top-0 right-0 w-1/2 h-full bg-purple-50 rounded-bl-[200px] -z-10 opacity-50"></div>
+                <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-br from-blue-50 to-blue-100 rounded-bl-[200px] -z-10 opacity-50"></div>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex flex-col lg:flex-row items-center gap-16">
                         <div className="flex-1 space-y-8 text-center lg:text-left">
-                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-100 text-purple-700 text-sm font-bold animate-fade-in">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 text-sm font-bold animate-fade-in">
                                 <span className="relative flex h-3 w-3">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-600"></span>
                                 </span>
                                 Now Live: New AI & Calculus Courses
                             </div>
                             <h1 className="text-5xl lg:text-7xl font-black text-gray-900 leading-tight">
-                                Learn <span className="text-purple-600">Smarter.</span> <br />
+                                Learn <span className="bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">Smarter.</span> <br />
                                 Think <span className="text-blue-600">Deeper.</span> <br />
                                 Grow <span className="text-pink-500">Faster.</span>
                             </h1>
@@ -47,7 +47,7 @@ const LandingPage = () => {
                             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                                 <button
                                     onClick={() => navigate('/signup')}
-                                    className="px-10 py-5 bg-purple-600 text-white font-black rounded-2xl shadow-xl shadow-purple-600/30 hover:bg-purple-700 hover:-translate-y-1 transition-all"
+                                    className="px-10 py-5 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-black rounded-2xl shadow-xl shadow-blue-600/30 hover:from-blue-700 hover:to-blue-800 hover:-translate-y-1 transition-all"
                                 >
                                     Get Started
                                 </button>
@@ -79,7 +79,7 @@ const LandingPage = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
                         {[
-                            { title: 'University-level concepts', desc: 'Deep dives into theory that actually matters.', icon: <GraduationCap className="w-10 h-10 text-purple-600" /> },
+                            { title: 'University-level concepts', desc: 'Deep dives into theory that actually matters.', icon: <GraduationCap className="w-10 h-10 text-blue-600" /> },
                             { title: 'Practical, skill-focused', desc: 'Apply what you learn with real projects.', icon: <Brain className="w-10 h-10 text-blue-600" /> },
                             { title: 'Career-driven outcomes', desc: 'Build a portfolio that employers value.', icon: <TrendingUp className="w-10 h-10 text-pink-500" /> },
                         ].map((item, idx) => (
@@ -98,17 +98,17 @@ const LandingPage = () => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex flex-col lg:flex-row justify-between items-end gap-8 mb-16">
                         <div className="space-y-4">
-                            <span className="text-purple-600 font-black uppercase tracking-widest text-sm">Our Portfolio</span>
+                            <span className="bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent font-black uppercase tracking-widest text-sm">Our Portfolio</span>
                             <h2 className="text-4xl lg:text-5xl font-black text-gray-900">Explore What You Can Learn</h2>
                         </div>
-                        <button onClick={() => navigate('/courses')} className="text-purple-600 font-black flex items-center gap-2 hover:translate-x-2 transition-transform">
+                        <button onClick={() => navigate('/courses')} className="text-blue-600 font-black flex items-center gap-2 hover:translate-x-2 transition-transform">
                             View all categories <ChevronRight size={20} />
                         </button>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                         {categories.map((cat, idx) => (
                             <div key={idx} className="p-8 rounded-[2.5rem] bg-gray-50 hover:bg-[#0f172a] hover:text-white transition-all duration-300 group cursor-pointer">
-                                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-purple-600 mb-6 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-blue-600 mb-6 group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-blue-700 group-hover:text-white transition-colors">
                                     {cat.icon}
                                 </div>
                                 <h3 className="text-2xl font-black mb-3">{cat.name}</h3>
@@ -125,7 +125,7 @@ const LandingPage = () => {
                     <div className="flex flex-col lg:flex-row gap-20 items-center">
                         <div className="flex-1 space-y-10">
                             <div className="space-y-4">
-                                <h2 className="text-4xl lg:text-5xl font-black leading-tight">More than courses— <br /><span className="text-purple-400">this is structured growth.</span></h2>
+                                <h2 className="text-4xl lg:text-5xl font-black leading-tight">More than courses— <br /><span className="text-blue-400">this is structured growth.</span></h2>
                             </div>
                             <div className="space-y-6">
                                 {[
@@ -136,7 +136,7 @@ const LandingPage = () => {
                                     'Access anytime, anywhere'
                                 ].map((feature, idx) => (
                                     <div key={idx} className="flex items-center gap-4 group">
-                                        <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 group-hover:bg-purple-500 group-hover:text-white transition-all">
+                                        <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-blue-700 group-hover:text-white transition-all">
                                             <CheckCircle size={16} />
                                         </div>
                                         <span className="text-lg font-bold text-gray-300 group-hover:text-white transition-colors">{feature}</span>
@@ -169,7 +169,7 @@ const LandingPage = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 font-sans">
                         {[
-                            { name: 'Short Lessons', icon: <PlayCircle />, color: 'bg-purple-100 text-purple-600' },
+                            { name: 'Short Lessons', icon: <PlayCircle />, color: 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800' },
                             { name: 'Progress Tracking', icon: <Activity />, color: 'bg-blue-100 text-blue-600' },
                             { name: 'Resources', icon: <Download />, color: 'bg-green-100 text-green-600' },
                             { name: 'Examples', icon: <BookOpen />, color: 'bg-pink-100 text-pink-600' },
@@ -194,7 +194,7 @@ const LandingPage = () => {
                             <h2 className="text-4xl font-black text-gray-900">Popular Right Now</h2>
                             <p className="text-lg text-gray-500 font-medium">Start with our highest-rated learning materials.</p>
                         </div>
-                        <button onClick={() => navigate('/courses')} className="hidden sm:flex items-center gap-2 font-black text-purple-600">
+                        <button onClick={() => navigate('/courses')} className="hidden sm:flex items-center gap-2 font-black text-blue-600">
                             Browse all <ChevronRight size={20} />
                         </button>
                     </div>
@@ -208,7 +208,7 @@ const LandingPage = () => {
                                     </div>
                                 </div>
                                 <div className="p-6 space-y-4">
-                                    <h3 className="text-lg font-black text-gray-900 line-clamp-2 leading-snug group-hover:text-purple-600 transition-colors">{course.title}</h3>
+                                    <h3 className="text-lg font-black text-gray-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition-colors">{course.title}</h3>
                                     <div className="flex items-center gap-1.5 text-yellow-500">
                                         <Star size={16} fill="currentColor" />
                                         <Star size={16} fill="currentColor" />
@@ -229,7 +229,7 @@ const LandingPage = () => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
                         <div className="space-y-8">
-                            <span className="text-purple-600 font-black uppercase tracking-widest text-sm">Success Stories</span>
+                            <span className="bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent font-black uppercase tracking-widest text-sm">Success Stories</span>
                             <h2 className="text-4xl lg:text-5xl font-black text-gray-900">See what our students are saying</h2>
                             <div className="space-y-4">
                                 <div className="flex items-center gap-3">
@@ -245,15 +245,15 @@ const LandingPage = () => {
                             </div>
                         </div>
                         <div className="relative">
-                            <div className="bg-purple-600 p-12 rounded-[3rem] text-white shadow-2xl relative z-10">
-                                <p className="text-2xl font-bold italic leading-relaxed mb-8">“HigherPolynomia helped me finally understand complex topics without feeling overwhelmed. The structure and depth are better than most online platforms I've tried.”</p>
+                            <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 p-12 rounded-[3rem] text-white shadow-2xl relative z-10">
+                                <p className="text-2xl font-bold italic leading-relaxed mb-8">"HigherPolynomia helped me finally understand complex topics without feeling overwhelmed. The structure and depth are better than most online platforms I've tried."</p>
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 rounded-full overflow-hidden bg-white/20">
                                         <img src="https://i.pravatar.cc/150?u=5" alt="Student" />
                                     </div>
                                     <div>
                                         <p className="font-black uppercase tracking-tight">Ankit Learner</p>
-                                        <p className="text-purple-200 text-sm font-medium">Software Engineer</p>
+                                        <p className="text-blue-200 text-sm font-medium">Software Engineer</p>
                                     </div>
                                 </div>
                             </div>
@@ -265,14 +265,14 @@ const LandingPage = () => {
 
             {/* 8. Call to Action */}
             <section className="py-32 px-4">
-                <div className="max-w-5xl mx-auto bg-gradient-to-r from-purple-600 via-purple-700 to-blue-600 rounded-[3rem] p-12 lg:p-20 text-center text-white relative shadow-2xl shadow-purple-600/40 overflow-hidden">
+                <div className="max-w-5xl mx-auto bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 rounded-[3rem] p-12 lg:p-20 text-center text-white relative shadow-2xl shadow-blue-600/40 overflow-hidden">
                     <div className="absolute top-[-50%] left-[-20%] w-[100%] h-[200%] bg-white/10 blur-[100px] rounded-full"></div>
                     <div className="relative z-10 space-y-8">
                         <h2 className="text-4xl lg:text-6xl font-black">Start Learning Today</h2>
-                        <p className="text-xl text-purple-100 max-w-2xl mx-auto font-medium">Join thousands of learners building skills that matter. Your journey to mastery begins here.</p>
+                        <p className="text-xl text-blue-100 max-w-2xl mx-auto font-medium">Join thousands of learners building skills that matter. Your journey to mastery begins here.</p>
                         <button
                             onClick={() => navigate('/signup')}
-                            className="px-12 py-5 bg-white text-purple-700 font-black rounded-2xl shadow-xl hover:scale-105 transition-transform"
+                            className="px-12 py-5 bg-white text-blue-700 font-black rounded-2xl shadow-xl hover:scale-105 transition-transform"
                         >
                             Create Your Free Account
                         </button>

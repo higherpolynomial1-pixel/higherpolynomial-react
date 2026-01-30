@@ -76,17 +76,17 @@ export default function App() {
         <header className="bg-white shadow-sm border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold text-purple-600">EduLearn Admin</h1>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">EduLearn Admin</h1>
               <div className="flex space-x-4">
                 <button
                   onClick={() => navigate('list')}
-                  className="px-4 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 transition"
+                  className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 transition"
                 >
                   View All Courses
                 </button>
                 <button
                   onClick={() => navigate('create')}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition shadow-md hover:shadow-lg"
                 >
                   Create Course
                 </button>
@@ -194,7 +194,7 @@ function CourseListPage({ navigate }) {
             {/* Course Card Content */}
             <div className="p-5 flex-1 flex flex-col">
               <div className="flex justify-between items-start mb-2">
-                <span className="text-xs font-semibold px-2.5 py-0.5 rounded bg-purple-100 text-purple-800 uppercase">
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 uppercase">
                   {course.category || 'General'}
                 </span>
                 <span className={`text-xs font-bold px-2.5 py-0.5 rounded ${course.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
@@ -207,7 +207,7 @@ function CourseListPage({ navigate }) {
               <div className="mt-auto space-y-3">
                 <div className="flex items-center justify-between text-sm text-gray-500">
                   <span className="flex items-center gap-1"><Video size={14} /> Playlists available</span>
-                  <span className="font-bold text-purple-600">${course.price}</span>
+                  <span className="font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">${course.price}</span>
                 </div>
 
                 <button
@@ -223,7 +223,7 @@ function CourseListPage({ navigate }) {
 
                 <button
                   onClick={() => navigate('playlists', course.id)}
-                  className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition"
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-2 rounded-lg hover:from-blue-700 hover:to-blue-800 transition shadow-md hover:shadow-lg"
                 >
                   Manage Playlists
                 </button>
@@ -256,7 +256,7 @@ function CourseListPage({ navigate }) {
           <p className="text-gray-500 mt-1">Start by creating your first course!</p>
           <button
             onClick={() => navigate('create')}
-            className="mt-6 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+            className="mt-6 px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition shadow-md hover:shadow-lg"
           >
             Create Course
           </button>
@@ -426,7 +426,7 @@ function CreateCoursePage({ navigate, isEdit = false, courseId = null }) {
             name="title"
             value={formData.title}
             onChange={handleInputChange}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.title ? 'border-red-500' : 'border-gray-300'}`}
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.title ? 'border-red-500' : 'border-gray-300'}`}
             placeholder="e.g., Complete Web Development Bootcamp"
           />
           {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title}</p>}
@@ -443,7 +443,7 @@ function CreateCoursePage({ navigate, isEdit = false, courseId = null }) {
             value={formData.description}
             onChange={handleInputChange}
             rows={5}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.description ? 'border-red-500' : 'border-gray-300'}`}
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.description ? 'border-red-500' : 'border-gray-300'}`}
             placeholder="Describe what students will learn in this course..."
           />
           {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
@@ -460,7 +460,7 @@ function CreateCoursePage({ navigate, isEdit = false, courseId = null }) {
               name="category"
               value={formData.category}
               onChange={handleInputChange}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.category ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.category ? 'border-red-500' : 'border-gray-300'}`}
             >
               <option value="">Select a category</option>
               {categories.map(cat => (
@@ -482,7 +482,7 @@ function CreateCoursePage({ navigate, isEdit = false, courseId = null }) {
               onChange={handleInputChange}
               min="0"
               step="0.01"
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.price ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.price ? 'border-red-500' : 'border-gray-300'}`}
               placeholder="29.99"
             />
             {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price}</p>}
@@ -544,7 +544,7 @@ function CreateCoursePage({ navigate, isEdit = false, courseId = null }) {
               <div className="space-y-3">
                 <div className="flex items-center justify-between bg-gray-50 p-4 rounded">
                   <div className="flex items-center space-x-3">
-                    <Video className="text-purple-600" size={24} />
+                    <Video className="text-blue-600" size={24} />
                     <div className="text-left">
                       <p className="text-sm font-medium text-gray-700">{formData.promoVideo.name}</p>
                       <p className="text-xs text-gray-500">Video preview will play here</p>
@@ -645,7 +645,7 @@ function CreateCoursePage({ navigate, isEdit = false, courseId = null }) {
           <button
             type="button"
             onClick={handleSubmit}
-            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition shadow-md hover:shadow-lg"
           >
             {isEdit ? 'Save Changes' : 'Create Course & Add Playlists'}
           </button>
@@ -911,7 +911,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
         <h2 className="text-xl font-bold text-red-600">Course not found</h2>
         <button
           onClick={() => navigate('list')}
-          className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg"
+          className="mt-4 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg shadow-md"
         >
           Back to Course List
         </button>
@@ -923,21 +923,21 @@ function ManagePlaylistsPage({ courseId, navigate }) {
     <div className="max-w-6xl mx-auto">
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-gray-900">Manage Playlists & Videos</h2>
-        <p className="mt-2 text-gray-600">Course: <span className="font-semibold text-purple-600">{course.title}</span></p>
+        <p className="mt-2 text-gray-600">Course: <span className="font-semibold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">{course.title}</span></p>
       </div>
 
       {playlists.length === 0 && (
-        <div className="mb-8 bg-purple-600 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="mb-8 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
           <div className="relative z-10 max-w-2xl">
             <h3 className="text-2xl font-bold mb-2">Next Step: Build your course content 🚀</h3>
-            <p className="text-purple-100 mb-6">Your course has been created successfully! Now, organize your learning materials by creating **Playlists** (sections) and then uploading **Videos** to them.</p>
+            <p className="text-blue-100 mb-6">Your course has been created successfully! Now, organize your learning materials by creating **Playlists** (sections) and then uploading **Videos** to them.</p>
             <div className="flex gap-4">
-              <div className="flex items-center gap-2 bg-purple-500/30 px-4 py-2 rounded-lg border border-purple-400/30 text-sm">
-                <span className="bg-white text-purple-600 w-6 h-6 rounded-full flex items-center justify-center font-bold">1</span>
+              <div className="flex items-center gap-2 bg-blue-500/30 px-4 py-2 rounded-lg border border-blue-400/30 text-sm">
+                <span className="bg-white text-blue-600 w-6 h-6 rounded-full flex items-center justify-center font-bold">1</span>
                 Create a Playlist
               </div>
-              <div className="flex items-center gap-2 bg-purple-500/30 px-4 py-2 rounded-lg border border-purple-400/30 text-sm">
-                <span className="bg-white text-purple-600 w-6 h-6 rounded-full flex items-center justify-center font-bold">2</span>
+              <div className="flex items-center gap-2 bg-blue-500/30 px-4 py-2 rounded-lg border border-blue-400/30 text-sm">
+                <span className="bg-white text-blue-600 w-6 h-6 rounded-full flex items-center justify-center font-bold">2</span>
                 Upload Videos
               </div>
             </div>
@@ -952,7 +952,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
         {/* Left: Create Playlist (remains same) */}
         <div className="bg-white rounded-lg shadow-md p-6 space-y-6">
           <h3 className="text-xl font-bold text-gray-900 flex items-center">
-            <List size={24} className="mr-2 text-purple-600" />
+            <List size={24} className="mr-2 text-blue-600" />
             Create Playlist
           </h3>
 
@@ -963,7 +963,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
                 type="text"
                 value={newPlaylist.title}
                 onChange={(e) => setNewPlaylist(prev => ({ ...prev, title: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g., HTML & CSS Basics"
               />
             </div>
@@ -974,14 +974,14 @@ function ManagePlaylistsPage({ courseId, navigate }) {
                 value={newPlaylist.description}
                 onChange={(e) => setNewPlaylist(prev => ({ ...prev, description: e.target.value }))}
                 rows={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="Brief description of this playlist..."
               />
             </div>
 
             <button
               onClick={handleCreatePlaylist}
-              className="w-full flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              className="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg"
             >
               <Plus size={20} className="mr-2" />
               Create Playlist
@@ -996,8 +996,8 @@ function ManagePlaylistsPage({ courseId, navigate }) {
                 <div
                   key={playlist.id}
                   className={`p-4 border rounded-lg cursor-pointer transition ${selectedPlaylist?.id === playlist.id
-                    ? 'border-purple-500 bg-purple-50'
-                    : 'border-gray-200 hover:border-purple-300'
+                    ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-blue-100'
+                    : 'border-gray-200 hover:border-blue-300'
                     }`}
                   onClick={() => setSelectedPlaylist(playlist)}
                 >
@@ -1065,15 +1065,15 @@ function ManagePlaylistsPage({ courseId, navigate }) {
         {/* Right: Upload Videos */}
         <div className="bg-white rounded-lg shadow-md p-6 space-y-6">
           <h3 className="text-xl font-bold text-gray-900 flex items-center">
-            <Video size={24} className="mr-2 text-purple-600" />
+            <Video size={24} className="mr-2 text-blue-600" />
             Upload Video
           </h3>
 
           {selectedPlaylist ? (
             <>
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4 mb-4">
                 <p className="text-sm text-gray-600">Uploading to:</p>
-                <p className="font-semibold text-purple-900">{selectedPlaylist.title}</p>
+                <p className="font-semibold text-blue-900">{selectedPlaylist.title}</p>
               </div>
 
               <div className="space-y-4 max-h-[600px] overflow-y-auto px-1">
@@ -1145,7 +1145,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
                 <button
                   onClick={handleUploadVideo}
                   disabled={!newVideo.title || !newVideo.video}
-                  className="w-full flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300"
+                  className="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:bg-gray-300 shadow-md hover:shadow-lg"
                 >
                   <Upload size={18} className="mr-2" />
                   Upload & Add to Playlist
@@ -1154,7 +1154,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
                 {/* Uploaded Videos List in Selected Playlist */}
                 <div className="mt-8 pt-6 border-t border-gray-100">
                   <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
-                    <Video size={18} className="mr-2 text-purple-600" />
+                    <Video size={18} className="mr-2 text-blue-600" />
                     Videos in this Playlist
                   </h4>
                   <div className="space-y-3">
@@ -1193,7 +1193,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
                             <div className="flex gap-1">
                               <button
                                 onClick={() => setPreviewVideo(vid)}
-                                className="p-1.5 text-purple-600 hover:bg-purple-100 rounded"
+                                className="p-1.5 text-blue-600 hover:bg-blue-100 rounded"
                                 title="Preview Video"
                               >
                                 <PlayCircle size={16} />
@@ -1243,7 +1243,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
                       <div key={id} className="mb-2">
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
-                            className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                            className="bg-gradient-to-r from-blue-600 to-blue-700 h-2 rounded-full transition-all duration-300"
                             style={{ width: `${progress}%` }}
                           />
                         </div>
@@ -1273,7 +1273,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
         </button>
         <button
           onClick={() => navigate('preview', courseId)}
-          className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg"
         >
           Preview Course
         </button>
@@ -1342,7 +1342,7 @@ function CoursePreviewPage({ courseId, navigate }) {
         </div>
         <button
           onClick={() => navigate('create')}
-          className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg"
         >
           Create Another Course
         </button>
@@ -1355,7 +1355,7 @@ function CoursePreviewPage({ courseId, navigate }) {
         <div className="grid grid-cols-3 gap-4 mb-8">
           <div className="bg-gray-50 p-4 rounded-lg">
             <p className="text-sm text-gray-600">Price</p>
-            <p className="text-2xl font-bold text-purple-600">${displayCourse.price}</p>
+            <p className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">${displayCourse.price}</p>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg">
             <p className="text-sm text-gray-600">Category</p>
@@ -1380,7 +1380,7 @@ function CoursePreviewPage({ courseId, navigate }) {
               <div className="pl-4 space-y-2">
                 {playlist.videos && playlist.videos.map((video, vIndex) => (
                   <div key={video.id} className="flex items-center text-sm text-gray-700">
-                    <Video size={16} className="mr-2 text-purple-600" />
+                    <Video size={16} className="mr-2 text-blue-600" />
                     <span>Video {vIndex + 1}: {video.title}</span>
                     {video.duration && <span className="ml-auto text-gray-500">{video.duration}</span>}
                   </div>

@@ -9,17 +9,17 @@ const ContactUs = () => {
                 <form className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                        <input type="text" className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none transition-all" placeholder="Your name" />
+                        <input type="text" className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Your name" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                        <input type="email" className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none transition-all" placeholder="Your email" />
+                        <input type="email" className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Your email" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-                        <textarea rows="4" className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none transition-all" placeholder="How can we help?"></textarea>
+                        <textarea rows="4" className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="How can we help?"></textarea>
                     </div>
-                    <button type="submit" className="w-full bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 transition-all">
+                    <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-all">
                         Send Message
                     </button>
                 </form>
