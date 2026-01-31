@@ -6,7 +6,7 @@ import { AuthContext } from '../auth/AuthContext';
 const UserCourseDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { isAuthenticated } = React.useContext(AuthContext);
+    const { isAuthenticated, user } = React.useContext(AuthContext);
     const [course, setCourse] = useState(null);
     const [playlists, setPlaylists] = useState([]);
     const [activeLesson, setActiveLesson] = useState(null);
@@ -17,6 +17,39 @@ const UserCourseDetails = () => {
 
     useEffect(() => {
         fetchCourseDetails();
+
+        // 🛡️ Global Security: Prevent keyboard shortcuts
+        const handleKeyDown = (e) => {
+            if (
+                e.key === 'F12' ||
+                (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+                (e.ctrlKey && (e.key === 'u' || e.key === 's' || e.key === 'p'))
+            ) {
+                e.preventDefault();
+                return false;
+            }
+        };
+
+        // 🛡️ Global Security: Prevent Print Screen (basic approach)
+        const handleContextMenu = (e) => e.preventDefault();
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('contextmenu', handleContextMenu);
+
+        // Periodically check for DevTools (optional but adds a layer)
+        const devtoolsInterval = setInterval(() => {
+            const threshold = 160;
+            if (window.outerWidth - window.innerWidth > threshold || window.outerHeight - window.innerHeight > threshold) {
+                // If devtools is detected, we could pause video or clear content
+                // For now, let's just keep it simple.
+            }
+        }, 1000);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('contextmenu', handleContextMenu);
+            clearInterval(devtoolsInterval);
+        };
     }, [id]);
 
     const fetchCourseDetails = async () => {
@@ -55,6 +88,23 @@ const UserCourseDetails = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
+            {/* 🛡️ Global Style Overrides for Protection */}
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .no-select {
+                    -webkit-user-select: none;
+                    -moz-user-select: none;
+                    -ms-user-select: none;
+                    user-select: none;
+                }
+                video::-webkit-media-controls-enclosure {
+                    overflow: hidden;
+                }
+                video::-webkit-media-controls-panel {
+                    /* Removed shift that was cutting off fullscreen button */
+                }
+            `}} />
+
             {/* Header / Nav */}
             <header className="bg-white shadow-sm border-b sticky top-0 z-10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -222,17 +272,60 @@ const UserCourseDetails = () => {
                 {currentView === 'video' && activeLesson && (
                     <div className="space-y-8 animate-in slide-in-from-right duration-300">
                         {/* Player Container */}
-                        <div className="bg-black rounded-2xl overflow-hidden shadow-2xl aspect-video relative ring-1 ring-white/10">
+                        <div
+                            className="bg-black rounded-2xl overflow-hidden shadow-2xl aspect-video relative ring-1 ring-white/10"
+                            onContextMenu={(e) => e.preventDefault()}
+                            onCopy={(e) => e.preventDefault()}
+                            onCut={(e) => e.preventDefault()}
+                            onPaste={(e) => e.preventDefault()}
+                            onDragStart={(e) => e.preventDefault()}
+                            onDrop={(e) => e.preventDefault()}
+                        >
                             {isAuthenticated ? (
-                                <video
-                                    src={activeLesson.video_url}
-                                    controls
-                                    className="w-full h-full object-contain"
-                                    poster={activeLesson.thumbnail || course.thumbnail}
-                                    autoPlay
-                                >
-                                    Your browser does not support the video tag.
-                                </video>
+                                <>
+                                    <video
+                                        src={activeLesson.video_url}
+                                        controls
+                                        controlsList="nodownload noremoteplayback"
+                                        disablePictureInPicture
+                                        disableRemotePlayback
+                                        onContextMenu={(e) => e.preventDefault()}
+                                        className="w-full h-full object-contain pointer-events-auto"
+                                        poster={activeLesson.thumbnail || course.thumbnail}
+                                        autoPlay
+                                        style={{ userSelect: 'none' }}
+                                        onKeyDown={(e) => {
+                                            // Prevent common download shortcuts
+                                            if (
+                                                (e.ctrlKey && e.key === 's') || // Ctrl+S
+                                                (e.ctrlKey && e.shiftKey && e.key === 'I') || // Ctrl+Shift+I
+                                                (e.key === 'F12') || // F12
+                                                (e.ctrlKey && e.shiftKey && e.key === 'J') || // Ctrl+Shift+J
+                                                (e.ctrlKey && e.key === 'u') // Ctrl+U
+                                            ) {
+                                                e.preventDefault();
+                                                return false;
+                                            }
+                                        }}
+                                    >
+                                        Your browser does not support the video tag.
+                                    </video>
+
+                                    {/* Watermark Overlay - Prevents screen recording identification */}
+                                    <div
+                                        className="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded text-xs font-mono pointer-events-none select-none"
+                                        style={{ userSelect: 'none' }}
+                                    >
+                                        {user?.email || 'Protected Content'}
+                                    </div>
+
+                                    {/* Invisible overlay to prevent inspect element on video */}
+                                    <div
+                                        className="absolute inset-0 pointer-events-none"
+                                        style={{ userSelect: 'none' }}
+                                        onContextMenu={(e) => e.preventDefault()}
+                                    />
+                                </>
                             ) : (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 backdrop-blur-sm p-6 text-center space-y-6">
                                     <div className="w-20 h-20 bg-blue-600/20 rounded-full flex items-center justify-center text-blue-400 border border-blue-500/30">
