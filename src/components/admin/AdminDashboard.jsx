@@ -1,5 +1,6 @@
 import { useState, createContext, useContext, useEffect } from 'react';
 import { Upload, Plus, Trash2, Eye, BookOpen, Video, FileText, DollarSign, Tag, User, List, PlayCircle } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 // Context for managing courses globally
 const CourseContext = createContext();
@@ -76,7 +77,7 @@ export default function App() {
         <header className="bg-white shadow-sm border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">EduLearn Admin</h1>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent"> Admin Dashboard</h1>
               <div className="flex space-x-4">
                 <button
                   onClick={() => navigate('list')}
@@ -90,6 +91,12 @@ export default function App() {
                 >
                   Create Course
                 </button>
+                <button
+                  onClick={() => navigate('doubt-sessions')}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition shadow-md hover:shadow-lg"
+                >
+                  Doubt Sessions
+                </button>
               </div>
             </div>
           </div>
@@ -102,6 +109,7 @@ export default function App() {
           {currentPage === 'edit' && <CreateCoursePage navigate={navigate} isEdit={true} courseId={currentCourseId} />}
           {currentPage === 'playlists' && <ManagePlaylistsPage courseId={currentCourseId} navigate={navigate} />}
           {currentPage === 'preview' && <CoursePreviewPage courseId={currentCourseId} navigate={navigate} />}
+          {currentPage === 'doubt-sessions' && <DoubtSessionsPage />}
         </main>
       </div>
     </CourseProvider>
@@ -157,14 +165,14 @@ function CourseListPage({ navigate }) {
       });
 
       if (response.ok) {
-        alert("Course deleted successfully");
+        toast.success("Course deleted successfully");
         fetchCourses(); // Refresh list
       } else {
         throw new Error("Failed to delete course");
       }
     } catch (error) {
       console.error("Delete error:", error);
-      alert("Error deleting course");
+      toast.error("Error deleting course");
     }
   };
 
@@ -381,7 +389,7 @@ function CreateCoursePage({ navigate, isEdit = false, courseId = null }) {
         const result = await response.json();
 
         if (isEdit) {
-          alert("Course updated successfully");
+          toast.success("Course updated successfully");
           navigate('list');
         } else {
           const newCourseId = result.courseId;
@@ -400,7 +408,7 @@ function CreateCoursePage({ navigate, isEdit = false, courseId = null }) {
         }
       } catch (error) {
         console.error(`Error ${isEdit ? 'updating' : 'creating'} course:`, error);
-        alert(`Failed to ${isEdit ? 'update' : 'create'} course. See console for details.`);
+        toast.error(`Failed to ${isEdit ? 'update' : 'create'} course. See console for details.`);
       }
     }
   };
@@ -715,7 +723,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
 
   const handleCreatePlaylist = async () => {
     if (!newPlaylist.title.trim()) {
-      alert("Playlist title is required");
+      toast.warning("Playlist title is required");
       return;
     }
 
@@ -736,7 +744,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
       const result = await response.json();
       setPlaylists(prev => [...prev, result.playlist]);
       setNewPlaylist({ title: '', description: '' });
-      alert("Playlist created successfully!");
+      toast.success("Playlist created successfully!");
     } catch (error) {
       console.error("Error creating playlist:", error);
       alert("Failed to create playlist");
@@ -752,12 +760,12 @@ function ManagePlaylistsPage({ courseId, navigate }) {
       });
 
       if (response.ok) {
-        alert("Playlist updated");
+        toast.success("Playlist updated");
         setEditingPlaylist(null);
         fetchPlaylists();
       }
     } catch (error) {
-      alert("Error updating playlist");
+      toast.error("Error updating playlist");
     }
   };
 
@@ -768,23 +776,23 @@ function ManagePlaylistsPage({ courseId, navigate }) {
         method: 'DELETE'
       });
       if (response.ok) {
-        alert("Playlist deleted");
+        toast.success("Playlist deleted");
         fetchPlaylists();
         if (selectedPlaylist?.id === id) setSelectedPlaylist(null);
       }
     } catch (error) {
-      alert("Error deleting playlist");
+      toast.error("Error deleting playlist");
     }
   };
 
   const handleUploadVideo = async () => {
     if (!selectedPlaylist) {
-      alert("Please select a playlist first");
+      toast.warning("Please select a playlist first");
       return;
     }
 
     if (!newVideo.title || !newVideo.video) {
-      alert("Video title and file are required");
+      toast.warning("Video title and file are required");
       return;
     }
 
@@ -826,7 +834,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
       await fetchPlaylists();
 
       setNewVideo({ title: '', description: '', video: null, thumbnail: null, notes: null, duration: '' });
-      alert("Video uploaded successfully!");
+      toast.success("Video uploaded successfully!");
 
       // Clear progress after 2 seconds
       setTimeout(() => {
@@ -839,7 +847,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
 
     } catch (error) {
       console.error("Upload error:", error);
-      alert(`Upload failed: ${error.message}`);
+      toast.error(`Upload failed: ${error.message}`);
       setUploadProgress(prev => {
         const newProgress = { ...prev };
         delete newProgress[videoId];
@@ -855,11 +863,11 @@ function ManagePlaylistsPage({ courseId, navigate }) {
         method: 'DELETE'
       });
       if (response.ok) {
-        alert("Video deleted");
+        toast.success("Video deleted");
         fetchPlaylists(); // Refresh list to update video counts/state
       }
     } catch (error) {
-      alert("Error deleting video");
+      toast.error("Error deleting video");
     }
   };
 
@@ -887,7 +895,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
       });
 
       if (response.ok) {
-        alert("Video updated");
+        toast.success("Video updated");
         setEditingVideo(null);
         fetchPlaylists();
       } else {
@@ -895,7 +903,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
       }
     } catch (error) {
       console.error("Update error:", error);
-      alert(`Error updating video: ${error.message}`);
+      toast.error(`Error updating video: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -1318,7 +1326,7 @@ function CoursePreviewPage({ courseId, navigate }) {
       });
 
       if (response.ok) {
-        alert(`Course ${newStatus} successfully!`);
+        toast.success(`Course ${newStatus} successfully!`);
         fetchCourseData(); // Refresh preview
       }
     } catch (error) {
@@ -1417,6 +1425,258 @@ function CoursePreviewPage({ courseId, navigate }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function DoubtSessionsPage() {
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [duration, setDuration] = useState('1 hour');
+  const [meetLink, setMeetLink] = useState('');
+  const [scheduledAt, setScheduledAt] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  const fetchRequests = async () => {
+    try {
+      const response = await fetch('https://higherpolynomial-node.vercel.app/api/admin/doubt-requests');
+      if (response.ok) {
+        const data = await response.json();
+        setRequests(data.requests || []);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching doubt requests:", error);
+      setLoading(false);
+    }
+  };
+
+  const handleOpenAcceptModal = (request) => {
+    setSelectedRequest(request);
+    setIsAcceptModalOpen(true);
+  };
+
+  const handleConfirmAccept = async () => {
+    if (!meetLink.trim()) {
+      toast.warning("Please provide a Google Meet link");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/admin/doubt-requests/${selectedRequest.id}/accept`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ duration, meetLink, scheduledAt })
+      });
+
+      if (response.ok) {
+        toast.success("Doubt session scheduled and email sent!");
+        setIsAcceptModalOpen(false);
+        setMeetLink('');
+        fetchRequests();
+      } else {
+        throw new Error("Failed to accept request");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Error processing request");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReject = async (id) => {
+    if (!confirm("Are you sure you want to reject this request? An email notification will be sent.")) return;
+
+    try {
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/admin/doubt-requests/${id}/reject`, {
+        method: 'PATCH'
+      });
+
+      if (response.ok) {
+        toast.success("Request rejected and email sent.");
+        fetchRequests();
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Error rejecting request");
+    }
+  };
+
+  if (loading) return <div className="text-center py-12">Loading doubt requests...</div>;
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold text-gray-900">Doubt Session Requests</h2>
+        <p className="mt-2 text-gray-600">Review and manage student doubt requests</p>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-100">
+                <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Student</th>
+                <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Course</th>
+                <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Doubt Description</th>
+                <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Scheduled At</th>
+                <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Meet Link</th>
+                <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {requests.map((request) => (
+                <tr key={request.id} className="hover:bg-gray-50 transition">
+                  <td className="px-6 py-4">
+                    <div className="text-sm font-bold text-gray-900">{request.user_name}</div>
+                    <div className="text-xs text-gray-500">{request.user_email}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold">
+                      {request.course_name}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <p className="text-sm text-gray-600 max-w-xs truncate" title={request.doubt_description}>
+                      {request.doubt_description}
+                    </p>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                    {new Date(request.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                    {request.scheduled_at ? (
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-900">{new Date(request.scheduled_at).toLocaleDateString()}</span>
+                        <span className="text-xs">{new Date(request.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 italic">Pending</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    {request.meet_link ? (
+                      <a href={request.meet_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm font-medium flex items-center gap-1">
+                        <Video size={14} /> Link
+                      </a>
+                    ) : (
+                      <span className="text-gray-400 text-sm italic">Not set</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      {request.status === 'pending' ? (
+                        <>
+                          <button
+                            onClick={() => handleOpenAcceptModal(request)}
+                            className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 transition shadow-sm"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            onClick={() => handleReject(request.id)}
+                            className="bg-red-50 text-red-600 border border-red-100 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 transition"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      ) : (
+                        <span className={`text-xs font-black uppercase tracking-widest ${request.status === 'accepted' ? 'text-green-600' : 'text-red-600'}`}>
+                          {request.status}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {requests.length === 0 && (
+          <div className="text-center py-20">
+            <p className="text-gray-500">No doubt requests found.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Accept Request Modal */}
+      {isAcceptModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-green-50 to-white">
+              <h3 className="text-xl font-bold text-gray-900">Schedule Doubt Session</h3>
+              <button onClick={() => setIsAcceptModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition text-2xl font-light">
+                &times;
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Session Duration</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['30 minutes', '1 hour', '2 hours'].map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => setDuration(opt)}
+                      className={`py-2 text-xs font-bold rounded-xl border transition-all ${duration === opt
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                        : 'border-gray-200 text-gray-600 hover:border-blue-300'}`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Google Meet Link</label>
+                <div className="relative">
+                  <Video className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                  <input
+                    type="url"
+                    value={meetLink}
+                    onChange={(e) => setMeetLink(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    placeholder="https://meet.google.com/..."
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Schedule Date & Time</label>
+                <input
+                  type="datetime-local"
+                  value={scheduledAt}
+                  onChange={(e) => setScheduledAt(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                />
+              </div>
+
+              <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <p className="text-xs text-blue-700 leading-relaxed font-medium">
+                  Confirming will send an automated email to <strong>{selectedRequest?.user_name}</strong> with the session details.
+                </p>
+              </div>
+
+              <button
+                onClick={handleConfirmAccept}
+                disabled={isProcessing}
+                className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-black rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
+              >
+                {isProcessing ? 'Processing...' : 'Send Invitation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

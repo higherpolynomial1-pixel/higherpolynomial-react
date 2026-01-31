@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { PlayCircle, FileText, ArrowLeft, BookOpen, Clock, Download, ChevronDown, ChevronRight, List } from 'lucide-react';
 import { AuthContext } from '../auth/AuthContext';
 
+import { toast } from 'react-toastify';
+
 const UserCourseDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -14,6 +16,9 @@ const UserCourseDetails = () => {
     const [error, setError] = useState(null);
     const [currentView, setCurrentView] = useState('course'); // 'course', 'playlist', 'video'
     const [selectedPlaylist, setSelectedPlaylist] = useState(null);
+    const [isDoubtModalOpen, setIsDoubtModalOpen] = useState(false);
+    const [doubtDescription, setDoubtDescription] = useState('');
+    const [isSubmittingDoubt, setIsSubmittingDoubt] = useState(false);
 
     useEffect(() => {
         fetchCourseDetails();
@@ -51,6 +56,39 @@ const UserCourseDetails = () => {
             clearInterval(devtoolsInterval);
         };
     }, [id]);
+
+    const handleDoubtSubmit = async () => {
+        if (!doubtDescription.trim()) return;
+
+        setIsSubmittingDoubt(true);
+        try {
+            const response = await fetch('https://higherpolynomial-node.vercel.app/api/doubt-requests', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userName: user?.name || 'Anonymous',
+                    userEmail: user?.email || 'No email',
+                    courseName: course?.title,
+                    doubtDescription: doubtDescription
+                }),
+            });
+
+            if (response.ok) {
+                toast.success('Doubt request sent successfully!');
+                setIsDoubtModalOpen(false);
+                setDoubtDescription('');
+            } else {
+                throw new Error('Failed to send doubt request');
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error('Error sending doubt request. Please try again.');
+        } finally {
+            setIsSubmittingDoubt(false);
+        }
+    };
 
     const fetchCourseDetails = async () => {
         try {
@@ -141,9 +179,51 @@ const UserCourseDetails = () => {
                                 )}
                             </div>
                         </div>
+                        {isAuthenticated && (
+                            <button
+                                onClick={() => setIsDoubtModalOpen(true)}
+                                className="ml-auto px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition shadow-md"
+                            >
+                                Request Doubt Session
+                            </button>
+                        )}
                     </div>
                 </div>
             </header>
+
+            {/* Doubt Request Modal */}
+            {
+                isDoubtModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                                <h3 className="text-xl font-bold text-gray-900">Request Doubt Session</h3>
+                                <button onClick={() => setIsDoubtModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition">
+                                    <ArrowLeft className="rotate-90" size={24} />
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Describe your doubt</label>
+                                    <textarea
+                                        value={doubtDescription}
+                                        onChange={(e) => setDoubtDescription(e.target.value)}
+                                        className="w-full h-40 p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
+                                        placeholder="Tell us what you're struggling with..."
+                                    ></textarea>
+                                </div>
+                                <button
+                                    onClick={handleDoubtSubmit}
+                                    disabled={isSubmittingDoubt || !doubtDescription.trim()}
+                                    className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
+                                >
+                                    {isSubmittingDoubt ? 'Sending...' : 'Send Request'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
 
             <main className="flex-1 max-w-5xl w-full mx-auto p-4 lg:p-8">
 
@@ -426,7 +506,7 @@ const UserCourseDetails = () => {
                     </div>
                 )}
             </main>
-        </div>
+        </div >
     );
 };
 
