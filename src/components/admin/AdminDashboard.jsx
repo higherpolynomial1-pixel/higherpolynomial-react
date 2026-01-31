@@ -1,4 +1,5 @@
 import { useState, createContext, useContext, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useParams, Link } from 'react-router-dom';
 import { Upload, Plus, Trash2, Eye, BookOpen, Video, FileText, DollarSign, Tag, User, List, PlayCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -60,15 +61,9 @@ const uploadToS3Directly = async (file, onProgress) => {
   }
 };
 
-// Main App Component with Routing
-export default function App() {
-  const [currentPage, setCurrentPage] = useState('create');
-  const [currentCourseId, setCurrentCourseId] = useState(null);
-
-  const navigate = (page, courseId = null) => {
-    setCurrentPage(page);
-    setCurrentCourseId(courseId);
-  };
+// Main Admin Dashboard Component with Nested Routing
+export default function AdminDashboard() {
+  const navigate = useNavigate();
 
   return (
     <CourseProvider>
@@ -80,13 +75,13 @@ export default function App() {
               <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent"> Admin Dashboard</h1>
               <div className="flex space-x-4">
                 <button
-                  onClick={() => navigate('list')}
+                  onClick={() => navigate('courses')}
                   className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 transition"
                 >
                   View All Courses
                 </button>
                 <button
-                  onClick={() => navigate('create')}
+                  onClick={() => navigate('create-course')}
                   className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition shadow-md hover:shadow-lg"
                 >
                   Create Course
@@ -102,14 +97,17 @@ export default function App() {
           </div>
         </header>
 
-        {/* Content */}
+        {/* Content Area with Nested Routes */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {currentPage === 'list' && <CourseListPage navigate={navigate} />}
-          {currentPage === 'create' && <CreateCoursePage navigate={navigate} isEdit={false} />}
-          {currentPage === 'edit' && <CreateCoursePage navigate={navigate} isEdit={true} courseId={currentCourseId} />}
-          {currentPage === 'playlists' && <ManagePlaylistsPage courseId={currentCourseId} navigate={navigate} />}
-          {currentPage === 'preview' && <CoursePreviewPage courseId={currentCourseId} navigate={navigate} />}
-          {currentPage === 'doubt-sessions' && <DoubtSessionsPage />}
+          <Routes>
+            <Route index element={<Navigate to="courses" replace />} />
+            <Route path="courses" element={<CourseListPage />} />
+            <Route path="create-course" element={<CreateCoursePage isEdit={false} />} />
+            <Route path="edit-course/:id" element={<CreateCoursePage isEdit={true} />} />
+            <Route path="playlists/:id" element={<ManagePlaylistsPage />} />
+            <Route path="preview/:id" element={<CoursePreviewPage />} />
+            <Route path="doubt-sessions" element={<DoubtSessionsPage />} />
+          </Routes>
         </main>
       </div>
     </CourseProvider>
@@ -117,7 +115,8 @@ export default function App() {
 }
 
 // NEW: Course List Page
-function CourseListPage({ navigate }) {
+function CourseListPage() {
+  const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -230,14 +229,14 @@ function CourseListPage({ navigate }) {
                 </button>
 
                 <button
-                  onClick={() => navigate('playlists', course.id)}
+                  onClick={() => navigate(`/admin-dashboard/playlists/${course.id}`)}
                   className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-2 rounded-lg hover:from-blue-700 hover:to-blue-800 transition shadow-md hover:shadow-lg"
                 >
                   Manage Playlists
                 </button>
                 <div className="grid grid-cols-2 gap-2">
                   <button
-                    onClick={() => navigate('edit', course.id)}
+                    onClick={() => navigate(`/admin-dashboard/edit-course/${course.id}`)}
                     className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm"
                   >
                     <Eye size={16} />
@@ -263,7 +262,7 @@ function CourseListPage({ navigate }) {
           <h3 className="text-lg font-medium text-gray-900">No courses yet</h3>
           <p className="text-gray-500 mt-1">Start by creating your first course!</p>
           <button
-            onClick={() => navigate('create')}
+            onClick={() => navigate('/admin-dashboard/create-course')}
             className="mt-6 px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition shadow-md hover:shadow-lg"
           >
             Create Course
@@ -275,7 +274,9 @@ function CourseListPage({ navigate }) {
 }
 
 // Create / Edit Course Page
-function CreateCoursePage({ navigate, isEdit = false, courseId = null }) {
+function CreateCoursePage({ isEdit = false }) {
+  const { id: courseId } = useParams();
+  const navigate = useNavigate();
   const { addCourse, updateCourse } = useCourses();
   const [formData, setFormData] = useState({
     title: '',
@@ -390,7 +391,7 @@ function CreateCoursePage({ navigate, isEdit = false, courseId = null }) {
 
         if (isEdit) {
           toast.success("Course updated successfully");
-          navigate('list');
+          navigate('/admin-dashboard/courses');
         } else {
           const newCourseId = result.courseId;
           const newCourse = {
@@ -404,7 +405,7 @@ function CreateCoursePage({ navigate, isEdit = false, courseId = null }) {
             notesUrl: result.urls?.notes
           };
           addCourse(newCourse);
-          navigate('playlists', newCourseId);
+          navigate(`/admin-dashboard/playlists/${newCourseId}`);
         }
       } catch (error) {
         console.error(`Error ${isEdit ? 'updating' : 'creating'} course:`, error);
@@ -664,7 +665,9 @@ function CreateCoursePage({ navigate, isEdit = false, courseId = null }) {
 }
 
 // NEW: Manage Playlists Page
-function ManagePlaylistsPage({ courseId, navigate }) {
+function ManagePlaylistsPage() {
+  const { id: courseId } = useParams();
+  const navigate = useNavigate();
   const { courses } = useCourses();
   const [course, setCourse] = useState(courses[courseId] || null);
   const [playlists, setPlaylists] = useState([]);
@@ -747,7 +750,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
       toast.success("Playlist created successfully!");
     } catch (error) {
       console.error("Error creating playlist:", error);
-      alert("Failed to create playlist");
+      toast.error("Failed to create playlist");
     }
   };
 
@@ -918,7 +921,7 @@ function ManagePlaylistsPage({ courseId, navigate }) {
       <div className="text-center py-12">
         <h2 className="text-xl font-bold text-red-600">Course not found</h2>
         <button
-          onClick={() => navigate('list')}
+          onClick={() => navigate('/admin-dashboard/courses')}
           className="mt-4 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg shadow-md"
         >
           Back to Course List
@@ -1274,13 +1277,13 @@ function ManagePlaylistsPage({ courseId, navigate }) {
       {/* Actions */}
       <div className="flex justify-between mt-8">
         <button
-          onClick={() => navigate('create')}
+          onClick={() => navigate('/admin-dashboard/courses')}
           className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
         >
-          Back to Course Details
+          Back to Course List
         </button>
         <button
-          onClick={() => navigate('preview', courseId)}
+          onClick={() => navigate(`/admin-dashboard/preview/${courseId}`)}
           className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg"
         >
           Preview Course
@@ -1291,7 +1294,9 @@ function ManagePlaylistsPage({ courseId, navigate }) {
 }
 
 // Course Preview Component (simplified - would need to fetch actual data)
-function CoursePreviewPage({ courseId, navigate }) {
+function CoursePreviewPage() {
+  const { id: courseId } = useParams();
+  const navigate = useNavigate();
   const { courses } = useCourses();
   const course = courses[courseId];
   const [courseData, setCourseData] = useState(null);
@@ -1349,7 +1354,7 @@ function CoursePreviewPage({ courseId, navigate }) {
           <p className="mt-2 text-gray-600">Review your course structure</p>
         </div>
         <button
-          onClick={() => navigate('create')}
+          onClick={() => navigate('/admin-dashboard/create-course')}
           className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg"
         >
           Create Another Course
@@ -1409,7 +1414,7 @@ function CoursePreviewPage({ courseId, navigate }) {
 
         <div className="mt-8 flex justify-between">
           <button
-            onClick={() => navigate('playlists', courseId)}
+            onClick={() => navigate(`/admin-dashboard/playlists/${courseId}`)}
             className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
           >
             Edit Playlists

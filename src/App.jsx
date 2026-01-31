@@ -49,7 +49,7 @@ const App = () => {
             } />
 
             {/* 4. Admin Admin Route */}
-            <Route path="/admin-dashboard" element={<AdminDashboard />} />
+            <Route path="/admin-dashboard/*" element={<AdminDashboard />} />
 
             {/* Default Catch-all */}
             <Route path="*" element={<Navigate to="/" replace />} />
