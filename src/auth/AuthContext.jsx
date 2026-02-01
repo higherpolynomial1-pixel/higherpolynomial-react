@@ -6,13 +6,13 @@ export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(
-    sessionStorage.getItem("isAuthenticated") === "true"
+    localStorage.getItem("isAuthenticated") === "true"
   );
   const [user, setUser] = useState(() => {
-    const storedUser = sessionStorage.getItem("user");
+    const storedUser = localStorage.getItem("user");
     return storedUser ? JSON.parse(storedUser) : null;
   });
-  const [token, setToken] = useState(sessionStorage.getItem("token") || null);
+  const [token, setToken] = useState(localStorage.getItem("token") || null);
 
   // ✅ Login function
   const login = (userData, userToken) => {
@@ -20,9 +20,9 @@ export const AuthProvider = ({ children }) => {
     setUser(userData);
     setToken(userToken);
 
-    sessionStorage.setItem("isAuthenticated", "true");
-    sessionStorage.setItem("user", JSON.stringify(userData));
-    sessionStorage.setItem("token", userToken);
+    localStorage.setItem("isAuthenticated", "true");
+    localStorage.setItem("user", JSON.stringify(userData));
+    localStorage.setItem("token", userToken);
   };
 
   // ✅ Logout function
@@ -31,19 +31,59 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setToken(null);
 
-    sessionStorage.removeItem("isAuthenticated");
-    sessionStorage.removeItem("user");
-    sessionStorage.removeItem("token");
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
   };
 
   // ✅ Restore session from storage
   useEffect(() => {
-    const storedUser = sessionStorage.getItem("user");
+    const storedUser = localStorage.getItem("user");
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
     }
   }, []);
+
+  // ✅ Global Fetch Interceptor
+  useEffect(() => {
+    const originalFetch = window.fetch;
+
+    window.fetch = async (...args) => {
+      let [resource, config] = args;
+
+      // Inject Token
+      if (token) {
+        config = config || {};
+        config.headers = config.headers || {};
+        // Handle both simple object headers and Headers object
+        if (config.headers instanceof Headers) {
+          config.headers.set('Authorization', `Bearer ${token}`);
+        } else {
+          config.headers['Authorization'] = `Bearer ${token}`;
+        }
+      }
+
+      try {
+        const response = await originalFetch(resource, config);
+
+        // Handle Session Expiry
+        if (response.status === 401) {
+          logout();
+          // Optional: Display toast if you have access to toast here, 
+          // or just rely on the redirect that usually happens when isAuthenticated becomes false
+        }
+
+        return response;
+      } catch (error) {
+        throw error;
+      }
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, [token]);
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, token, login, logout }}>
