@@ -18,7 +18,7 @@ const Dashboard = () => {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch('http://localhost:3/api/courses');
+      const response = await fetch('https://higherpolynomial-node.vercel.app/api/courses');
       if (!response.ok) throw new Error('Failed to fetch courses');
       const data = await response.json();
       setCourses(data.courses || []);

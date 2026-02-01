@@ -116,10 +116,10 @@ const UserCourseDetails = () => {
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-red-600">
             <p className="text-xl font-semibold mb-4">{error || 'Course not found'}</p>
             <button
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/courses')}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
-                Back to Dashboard
+                Back to Courses
             </button>
         </div>
     );
@@ -151,7 +151,7 @@ const UserCourseDetails = () => {
                             onClick={() => {
                                 if (currentView === 'video') setCurrentView('playlist');
                                 else if (currentView === 'playlist') setCurrentView('course');
-                                else navigate('/dashboard');
+                                else navigate('/courses');
                             }}
                             className="p-2 hover:bg-gray-100 rounded-full transition"
                         >
@@ -265,6 +265,10 @@ const UserCourseDetails = () => {
                                     <div
                                         key={playlist.id}
                                         onClick={() => {
+                                            if (!isAuthenticated) {
+                                                navigate('/login');
+                                                return;
+                                            }
                                             setSelectedPlaylist(playlist);
                                             setCurrentView('playlist');
                                         }}
