@@ -126,7 +126,7 @@ function CourseListPage() {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/courses?role=admin');
+      const response = await fetch('https://higherpolynomial-node.vercel.app/api/courses?role=admin');
       if (response.ok) {
         const data = await response.json();
         setCourses(data.courses || []);
@@ -1450,7 +1450,7 @@ function DoubtSessionsPage() {
 
   const fetchRequests = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/admin/doubt-requests');
+      const response = await fetch('https://higherpolynomial-node.vercel.app/api/admin/doubt-requests');
       if (response.ok) {
         const data = await response.json();
         setRequests(data.requests || []);
