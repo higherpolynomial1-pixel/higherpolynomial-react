@@ -1,6 +1,6 @@
 import { useState, createContext, useContext, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useParams, Link } from 'react-router-dom';
-import { Upload, Plus, Trash2, Eye, BookOpen, Video, FileText, DollarSign, Tag, User, List, PlayCircle } from 'lucide-react';
+import { Upload, Plus, Trash2, Eye, BookOpen, Video, FileText, DollarSign, Tag, User, List, PlayCircle, Calendar, Clock } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 // Context for managing courses globally
@@ -8,6 +8,30 @@ const CourseContext = createContext();
 
 function CourseProvider({ children }) {
   const [courses, setCourses] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  const fetchCourses = async () => {
+    try {
+      const response = await fetch('https://higherpolynomial-node.vercel.app/api/courses?role=admin');
+      if (response.ok) {
+        const data = await response.json();
+        // Convert array to object keyed by ID
+        const coursesObj = {};
+        (data.courses || []).forEach(c => {
+          coursesObj[c.id] = c;
+        });
+        setCourses(coursesObj);
+      }
+    } catch (error) {
+      console.error("Error fetching courses in context:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCourses();
+  }, []);
 
   const addCourse = (course) => {
     setCourses(prev => ({ ...prev, [course.id]: course }));
@@ -21,7 +45,7 @@ function CourseProvider({ children }) {
   };
 
   return (
-    <CourseContext.Provider value={{ courses, addCourse, updateCourse }}>
+    <CourseContext.Provider value={{ courses, loading, addCourse, updateCourse, fetchCourses }}>
       {children}
     </CourseContext.Provider>
   );
@@ -117,26 +141,16 @@ export default function AdminDashboard() {
 // NEW: Course List Page
 function CourseListPage() {
   const navigate = useNavigate();
-  const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { courses: coursesObj, loading: contextLoading, fetchCourses } = useCourses();
+  const courses = Object.values(coursesObj);
+  const loading = contextLoading;
+  const [deletingCourseId, setDeletingCourseId] = useState(null);
 
+  // We don't need a local fetchCourses anymore, it's in the context
+  // but if we want to force refresh on mount:
   useEffect(() => {
     fetchCourses();
-  }, []);
-
-  const fetchCourses = async () => {
-    try {
-      const response = await fetch('https://higherpolynomial-node.vercel.app/api/courses?role=admin');
-      if (response.ok) {
-        const data = await response.json();
-        setCourses(data.courses || []);
-      }
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching courses:", error);
-      setLoading(false);
-    }
-  };
+  }, [fetchCourses]);
 
   const handlePublishCourse = async (id, currentStatus) => {
     const newStatus = currentStatus === 'published' ? 'draft' : 'published';
@@ -156,7 +170,11 @@ function CourseListPage() {
   };
 
   const handleDeleteCourse = async (id) => {
-    if (!confirm("Are you sure? This will permanently delete the course, all its playlists, and all its videos.")) return;
+    if (deletingCourseId !== id) {
+      setDeletingCourseId(id);
+      setTimeout(() => setDeletingCourseId(null), 3000); // Reset after 3 seconds
+      return;
+    }
 
     try {
       const response = await fetch(`https://higherpolynomial-node.vercel.app/api/courses/${id}`, {
@@ -165,6 +183,7 @@ function CourseListPage() {
 
       if (response.ok) {
         toast.success("Course deleted successfully");
+        setDeletingCourseId(null);
         fetchCourses(); // Refresh list
       } else {
         throw new Error("Failed to delete course");
@@ -244,10 +263,13 @@ function CourseListPage() {
                   </button>
                   <button
                     onClick={() => handleDeleteCourse(course.id)}
-                    className="flex items-center justify-center gap-2 px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition text-sm"
+                    className={`flex items-center justify-center gap-2 px-4 py-2 border rounded-lg transition-all text-sm ${deletingCourseId === course.id
+                      ? 'bg-red-600 border-red-600 text-white animate-pulse'
+                      : 'border-red-200 text-red-600 hover:bg-red-50'
+                      }`}
                   >
                     <Trash2 size={16} />
-                    Delete
+                    {deletingCourseId === course.id ? 'Confirm?' : 'Delete'}
                   </button>
                 </div>
               </div>
@@ -365,7 +387,7 @@ function CreateCoursePage({ isEdit = false }) {
         const videoUrl = await uploadToS3Directly(formData.promoVideo);
         const notesUrl = await uploadToS3Directly(formData.notes);
 
-        const url = isEdit ? `https://higherpolynomial-node.vercel.app/api/courses/${courseId}` : 'https://higherpolynomial-node.vercel.app/api/courses';
+        const url = isEdit ? `https://higherpolynomial-node.vercel.app/api/courses/${courseId}` : 'http://localhost:3000/api/courses';
         const method = isEdit ? 'PUT' : 'POST';
 
         const response = await fetch(url, {
@@ -1435,6 +1457,7 @@ function CoursePreviewPage() {
 }
 
 function DoubtSessionsPage() {
+  const [activeTab, setActiveTab] = useState('requests'); // 'requests' or 'availability'
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
@@ -1444,9 +1467,40 @@ function DoubtSessionsPage() {
   const [scheduledAt, setScheduledAt] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Availability State
+  const [slots, setSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const { courses } = useCourses();
+  const [slotForm, setSlotForm] = useState({
+    date: '',
+    time: '',
+    duration: '60', // minutes
+    selectedCourses: []
+  });
+  const [isCreatingSlot, setIsCreatingSlot] = useState(false);
+  const [deletingSlotId, setDeletingSlotId] = useState(null);
+
   useEffect(() => {
     fetchRequests();
-  }, []);
+    if (activeTab === 'availability') {
+      fetchSlots();
+    }
+  }, [activeTab]);
+
+  const fetchSlots = async () => {
+    setLoadingSlots(true);
+    try {
+      const response = await fetch('https://higherpolynomial-node.vercel.app/api/admin/doubt-slots');
+      if (response.ok) {
+        const data = await response.json();
+        setSlots(data.slots || []);
+      }
+    } catch (error) {
+      console.error("Error fetching slots:", error);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
 
   const fetchRequests = async () => {
     try {
@@ -1464,6 +1518,21 @@ function DoubtSessionsPage() {
 
   const handleOpenAcceptModal = (request) => {
     setSelectedRequest(request);
+    setMeetLink('');
+
+    if (request.slot_start_time) {
+      const date = new Date(request.slot_start_time);
+      // Ensure we format it correctly for datetime-local (YYYY-MM-DDTHH:MM)
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const localIso = `${year}-${month}-${day}T${hours}:${minutes}`;
+      setScheduledAt(localIso);
+    } else {
+      setScheduledAt('');
+    }
     setIsAcceptModalOpen(true);
   };
 
@@ -1515,168 +1584,400 @@ function DoubtSessionsPage() {
     }
   };
 
-  if (loading) return <div className="text-center py-12">Loading doubt requests...</div>;
+  const handleCreateSlot = async () => {
+    if (!slotForm.date || !slotForm.time || slotForm.selectedCourses.length === 0) {
+      toast.warning("Please select Date, Time, and at least one Course");
+      return;
+    }
+
+    setIsCreatingSlot(true);
+    try {
+      const startDateTime = new Date(`${slotForm.date}T${slotForm.time}`);
+
+      // Frontend Validation: No past dates
+      if (startDateTime < new Date()) {
+        toast.warning("Cannot create availability for a past date/time");
+        setIsCreatingSlot(false);
+        return;
+      }
+
+      const endDateTime = new Date(startDateTime.getTime() + parseInt(slotForm.duration) * 60000);
+
+      const response = await fetch('https://higherpolynomial-node.vercel.app/api/admin/doubt-slots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startTime: startDateTime.toISOString(),
+          endTime: endDateTime.toISOString(),
+          courseIds: slotForm.selectedCourses
+        })
+      });
+
+      if (response.ok) {
+        toast.success("Availability slot created successfully!");
+        setSlotForm({ ...slotForm, selectedCourses: [] }); // Keep date/time for bulk creation but reset selection? Or reset all.
+        fetchSlots(); // Refresh list
+      } else {
+        throw new Error("Failed to create slot");
+      }
+    } catch (error) {
+      toast.error("Error creating slot");
+      console.error(error);
+    } finally {
+      setIsCreatingSlot(false);
+    }
+  };
+
+  const handleDeleteSlot = async (id) => {
+    if (deletingSlotId !== id) {
+      setDeletingSlotId(id);
+      setTimeout(() => setDeletingSlotId(null), 3000); // Reset after 3 seconds
+      return;
+    }
+
+    try {
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/admin/doubt-slots/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        toast.success("Slot deleted successfully");
+        setDeletingSlotId(null);
+        fetchSlots();
+      } else {
+        throw new Error("Failed to delete slot");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Error deleting slot");
+    }
+  };
+
+  const toggleCourseSelection = (courseId) => {
+    setSlotForm(prev => {
+      const exists = prev.selectedCourses.includes(courseId);
+      return {
+        ...prev,
+        selectedCourses: exists
+          ? prev.selectedCourses.filter(id => id !== courseId)
+          : [...prev.selectedCourses, courseId]
+      };
+    });
+  };
+
+  if (loading) return <div className="text-center py-12">Loading...</div>;
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-900">Doubt Session Requests</h2>
-        <p className="mt-2 text-gray-600">Review and manage student doubt requests</p>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">Doubt Sessions</h2>
+          <p className="mt-2 text-gray-600">Manage student requests and your availability</p>
+        </div>
+
+        {/* Tabs */}
+        <div className="bg-white rounded-lg p-1 border border-gray-200 flex">
+          <button
+            onClick={() => setActiveTab('requests')}
+            className={`px-4 py-2 rounded-md font-medium text-sm transition ${activeTab === 'requests' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}
+          >
+            Requests ({requests.filter(r => r.status === 'pending').length})
+          </button>
+          <button
+            onClick={() => setActiveTab('availability')}
+            className={`px-4 py-2 rounded-md font-medium text-sm transition ${activeTab === 'availability' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}
+          >
+            Manage Availability
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Student</th>
-                <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Course</th>
-                <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Doubt Description</th>
-                <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Scheduled At</th>
-                <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Meet Link</th>
-                <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {requests.map((request) => (
-                <tr key={request.id} className="hover:bg-gray-50 transition">
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-bold text-gray-900">{request.user_name}</div>
-                    <div className="text-xs text-gray-500">{request.user_email}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold">
-                      {request.course_name}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm text-gray-600 max-w-xs truncate" title={request.doubt_description}>
-                      {request.doubt_description}
-                    </p>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                    {new Date(request.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                    {request.scheduled_at ? (
-                      <div className="flex flex-col">
-                        <span className="font-bold text-gray-900">{new Date(request.scheduled_at).toLocaleDateString()}</span>
-                        <span className="text-xs">{new Date(request.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+      {activeTab === 'requests' ? (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Student</th>
+                  <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Course</th>
+                  <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Doubt Description</th>
+                  <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Scheduled At</th>
+                  <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Meet Link</th>
+                  <th className="px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {requests.map((request) => (
+                  <tr key={request.id} className="hover:bg-gray-50 transition">
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-bold text-gray-900">{request.user_name}</div>
+                      <div className="text-xs text-gray-500">{request.user_email}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold">
+                        {request.course_name}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-sm text-gray-600 max-w-xs truncate" title={request.doubt_description}>
+                        {request.doubt_description}
+                      </p>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                      {new Date(request.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                      {request.scheduled_at ? (
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-blue-600 uppercase">Confirmed:</span>
+                          <span className="font-bold text-gray-900">{new Date(request.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      ) : (
+                        request.slot_start_time ? (
+                          <div className="flex flex-col text-orange-600">
+                            <span className="font-bold text-xs uppercase">Requested:</span>
+                            <span className="text-xs">{new Date(request.slot_start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        ) : <span className="text-gray-400 italic">Pending</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {request.meet_link ? (
+                        <a
+                          href={request.meet_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 font-bold text-sm transition"
+                        >
+                          <Video size={16} />
+                          <span>Link</span>
+                        </a>
+                      ) : (
+                        <span className="text-gray-400 text-sm italic">Not provided</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        {request.status === 'pending' ? (
+                          <>
+                            <button
+                              onClick={() => handleOpenAcceptModal(request)}
+                              className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 transition shadow-sm"
+                            >
+                              Accept
+                            </button>
+                            <button
+                              onClick={() => handleReject(request.id)}
+                              className="bg-red-50 text-red-600 border border-red-100 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 transition"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        ) : (
+                          <span className={`text-xs font-black uppercase tracking-widest ${request.status === 'accepted' ? 'text-green-600' : 'text-red-600'}`}>
+                            {request.status}
+                          </span>
+                        )}
                       </div>
-                    ) : (
-                      <span className="text-gray-400 italic">Pending</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    {request.meet_link ? (
-                      <a href={request.meet_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm font-medium flex items-center gap-1">
-                        <Video size={14} /> Link
-                      </a>
-                    ) : (
-                      <span className="text-gray-400 text-sm italic">Not set</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      {request.status === 'pending' ? (
+                    </td>
+                  </tr>
+                ))}
+                {requests.length === 0 && (
+                  <tr><td colSpan="7" className="text-center py-8 text-gray-500">No requests found</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+          <h3 className="text-xl font-bold text-gray-900 mb-6 font-black uppercase tracking-tight">Create Availability Slot</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Date</label>
+              <input
+                type="date"
+                value={slotForm.date}
+                onChange={(e) => setSlotForm({ ...slotForm, date: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Start Time</label>
+              <input
+                type="time"
+                value={slotForm.time}
+                onChange={(e) => setSlotForm({ ...slotForm, time: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Duration</label>
+              <select
+                value={slotForm.duration}
+                onChange={(e) => setSlotForm({ ...slotForm, duration: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold"
+              >
+                <option value="30">30 Minutes</option>
+                <option value="60">1 Hour</option>
+                <option value="90">1.5 Hours</option>
+                <option value="120">2 Hours</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="mb-8">
+            <label className="block text-sm font-bold text-gray-700 mb-2">Assign to Courses</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-72 overflow-y-auto p-4 border border-gray-100 rounded-2xl bg-gray-50/50">
+              {Object.values(courses || {}).map(course => (
+                <div
+                  key={course.id}
+                  onClick={() => toggleCourseSelection(course.id)}
+                  className={`cursor-pointer p-4 rounded-xl border-2 transition-all flex items-center justify-between group ${slotForm.selectedCourses.includes(course.id)
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                    : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
+                    }`}
+                >
+                  <span className="text-sm font-bold truncate pr-2">{course.title}</span>
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center border-2 transition-colors ${slotForm.selectedCourses.includes(course.id)
+                    ? 'bg-white border-white text-blue-600'
+                    : 'border-gray-200 group-hover:border-blue-300'
+                    }`}>
+                    {slotForm.selectedCourses.includes(course.id) && <Plus size={16} strokeWidth={3} />}
+                  </div>
+                </div>
+              ))}
+              {Object.keys(courses || {}).length === 0 && (
+                <div className="col-span-full py-12 text-center">
+                  <p className="text-gray-400 font-medium italic">No courses found. Please create a course first.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <button
+            onClick={handleCreateSlot}
+            disabled={isCreatingSlot}
+            className="w-full md:w-auto px-10 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-2xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 font-black uppercase tracking-widest text-sm mb-12"
+          >
+            {isCreatingSlot ? 'Publishing...' : 'Publish Availability'}
+          </button>
+
+          {/* Existing Slots Section */}
+          <div className="border-t border-gray-100 pt-12">
+            <h3 className="text-xl font-bold text-gray-900 mb-6 font-black uppercase tracking-tight">Active Availability Slots</h3>
+
+            {loadingSlots ? (
+              <div className="text-center py-8 text-gray-500 italic">Loading slots...</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {slots.map((slot) => (
+                  <div key={slot.id} className="bg-gray-50/50 border border-gray-100 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-6">
+                      <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm text-center min-w-[80px]">
+                        <p className="text-[10px] font-black uppercase text-blue-600 tracking-wider">Date</p>
+                        <p className="font-bold text-gray-900">{new Date(slot.start_time).toLocaleDateString()}</p>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm text-center min-w-[80px]">
+                        <p className="text-[10px] font-black uppercase text-orange-600 tracking-wider">Start Time</p>
+                        <p className="font-bold text-gray-900">{new Date(slot.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm text-center min-w-[80px]">
+                        <p className="text-[10px] font-black uppercase text-green-600 tracking-wider">Status</p>
+                        <p className={`font-bold ${slot.is_booked ? 'text-red-600' : 'text-green-600'}`}>{slot.is_booked ? 'Booked' : 'Available'}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 max-w-md">
+                      <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider mb-1">Assigned Courses</p>
+                      <p className="text-sm font-bold text-gray-700">{slot.courses || 'All Courses'}</p>
+                    </div>
+
+                    <button
+                      onClick={() => handleDeleteSlot(slot.id)}
+                      className={`p-3 rounded-xl transition-all self-center flex items-center gap-2 ${deletingSlotId === slot.id
+                        ? 'bg-red-600 text-white animate-pulse px-4'
+                        : 'text-red-600 hover:bg-red-50'
+                        }`}
+                      title={deletingSlotId === slot.id ? "Confirm Delete" : "Delete Slot"}
+                    >
+                      {deletingSlotId === slot.id ? (
                         <>
-                          <button
-                            onClick={() => handleOpenAcceptModal(request)}
-                            className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 transition shadow-sm"
-                          >
-                            Accept
-                          </button>
-                          <button
-                            onClick={() => handleReject(request.id)}
-                            className="bg-red-50 text-red-600 border border-red-100 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 transition"
-                          >
-                            Reject
-                          </button>
+                          <Trash2 size={18} />
+                          <span className="text-xs font-bold uppercase">Confirm?</span>
                         </>
                       ) : (
-                        <span className={`text-xs font-black uppercase tracking-widest ${request.status === 'accepted' ? 'text-green-600' : 'text-red-600'}`}>
-                          {request.status}
-                        </span>
+                        <Trash2 size={20} />
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {requests.length === 0 && (
-          <div className="text-center py-20">
-            <p className="text-gray-500">No doubt requests found.</p>
+                    </button>
+                  </div>
+                ))}
+                {slots.length === 0 && (
+                  <div className="text-center py-12 bg-gray-50/30 border border-dashed border-gray-200 rounded-2xl">
+                    <p className="text-gray-400 font-medium italic">No active availability slots found.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Accept Request Modal */}
+      {/* Accept Modal */}
       {isAcceptModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-green-50 to-white">
-              <h3 className="text-xl font-bold text-gray-900">Schedule Doubt Session</h3>
-              <button onClick={() => setIsAcceptModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition text-2xl font-light">
-                &times;
-              </button>
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md animate-in zoom-in-95 duration-200">
+            <h3 className="text-2xl font-black text-gray-900 mb-6 uppercase tracking-tight">Accept Request</h3>
+            <div className="bg-blue-50 border border-blue-100 p-5 rounded-2xl">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-blue-50">
+                  <Calendar size={20} className="text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-blue-500 tracking-wider">Scheduled Date</p>
+                  <p className="font-bold text-gray-900 leading-none">
+                    {scheduledAt ? new Date(scheduledAt).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-blue-50">
+                  <Clock size={20} className="text-orange-500" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-orange-500 tracking-wider">Session Time</p>
+                  <p className="font-bold text-gray-900 leading-none">
+                    {scheduledAt ? new Date(scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="p-6 space-y-6">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Session Duration</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['30 minutes', '1 hour', '2 hours'].map((opt) => (
-                    <button
-                      key={opt}
-                      onClick={() => setDuration(opt)}
-                      className={`py-2 text-xs font-bold rounded-xl border transition-all ${duration === opt
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-md'
-                        : 'border-gray-200 text-gray-600 hover:border-blue-300'}`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Google Meet Link</label>
-                <div className="relative">
-                  <Video className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                  <input
-                    type="url"
-                    value={meetLink}
-                    onChange={(e) => setMeetLink(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    placeholder="https://meet.google.com/..."
-                  />
-                </div>
-              </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Google Meet Link</label>
+              <input
+                type="text"
+                value={meetLink}
+                onChange={(e) => setMeetLink(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                placeholder="https://meet.google.com/..."
+              />
+            </div>
 
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Schedule Date & Time</label>
-                <input
-                  type="datetime-local"
-                  value={scheduledAt}
-                  onChange={(e) => setScheduledAt(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                />
-              </div>
-
-              <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                <p className="text-xs text-blue-700 leading-relaxed font-medium">
-                  Confirming will send an automated email to <strong>{selectedRequest?.user_name}</strong> with the session details.
-                </p>
-              </div>
-
+            <div className="flex gap-4 pt-4">
+              <button
+                onClick={() => setIsAcceptModalOpen(false)}
+                className="flex-1 px-6 py-4 text-gray-500 font-bold hover:bg-gray-50 rounded-2xl transition"
+              >
+                Back
+              </button>
               <button
                 onClick={handleConfirmAccept}
                 disabled={isProcessing}
-                className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-black rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
+                className="flex-[2] px-6 py-4 bg-green-600 text-white font-black rounded-2xl hover:bg-green-700 transition shadow-lg shadow-green-200"
               >
-                {isProcessing ? 'Processing...' : 'Send Invitation'}
+                {isProcessing ? 'Scheduling...' : 'Schedule Session'}
               </button>
             </div>
           </div>

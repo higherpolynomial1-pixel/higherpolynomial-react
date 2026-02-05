@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PlayCircle, FileText, ArrowLeft, BookOpen, Clock, Download, ChevronDown, ChevronRight, List } from 'lucide-react';
 import { AuthContext } from '../auth/AuthContext';
+import AvailabilitySlotSelector from '../components/AvailabilitySlotSelector';
 
 import { toast } from 'react-toastify';
 
@@ -18,6 +19,7 @@ const UserCourseDetails = () => {
     const [selectedPlaylist, setSelectedPlaylist] = useState(null);
     const [isDoubtModalOpen, setIsDoubtModalOpen] = useState(false);
     const [doubtDescription, setDoubtDescription] = useState('');
+    const [selectedSlotId, setSelectedSlotId] = useState(null);
     const [isSubmittingDoubt, setIsSubmittingDoubt] = useState(false);
 
     useEffect(() => {
@@ -71,7 +73,8 @@ const UserCourseDetails = () => {
                     userName: user?.name || 'Anonymous',
                     userEmail: user?.email || 'No email',
                     courseName: course?.title,
-                    doubtDescription: doubtDescription
+                    doubtDescription: doubtDescription,
+                    slotId: selectedSlotId
                 }),
             });
 
@@ -79,8 +82,10 @@ const UserCourseDetails = () => {
                 toast.success('Doubt request sent successfully!');
                 setIsDoubtModalOpen(false);
                 setDoubtDescription('');
+                setSelectedSlotId(null);
             } else {
-                throw new Error('Failed to send doubt request');
+                const data = await response.json();
+                throw new Error(data.message || 'Failed to send doubt request');
             }
         } catch (err) {
             console.error(err);
@@ -204,17 +209,21 @@ const UserCourseDetails = () => {
                             </div>
                             <div className="p-6 space-y-4">
                                 <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Select Availability Slot</label>
+                                    <AvailabilitySlotSelector courseId={id} onSelect={(slotId) => setSelectedSlotId(slotId)} />
+                                </div>
+                                <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">Describe your doubt</label>
                                     <textarea
                                         value={doubtDescription}
                                         onChange={(e) => setDoubtDescription(e.target.value)}
-                                        className="w-full h-40 p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
+                                        className="w-full h-32 p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
                                         placeholder="Tell us what you're struggling with..."
                                     ></textarea>
                                 </div>
                                 <button
                                     onClick={handleDoubtSubmit}
-                                    disabled={isSubmittingDoubt || !doubtDescription.trim()}
+                                    disabled={isSubmittingDoubt || !doubtDescription.trim() || !selectedSlotId}
                                     className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
                                 >
                                     {isSubmittingDoubt ? 'Sending...' : 'Send Request'}
