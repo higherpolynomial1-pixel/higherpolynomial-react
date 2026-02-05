@@ -42,7 +42,7 @@ const AdminLogin = () => {
 
   //     if (response.data.message === "Login successful.") {
   //       toast.success("Login successful! Redirecting...", { position: "top-right" });
-        
+
   //       // Save admin data to AuthContext
   //       login(response.data.vendor);
 
@@ -61,36 +61,33 @@ const AdminLogin = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-  
+
     if (!loginIdentifier || !password) {
       toast.error("Please enter both email/contact number and password", { position: "top-right" });
       setLoading(false);
       return;
     }
-  
+
     // Determine if the identifier is an email or contact number
     const isEmail = loginIdentifier.includes('@');
-    const loginData = isEmail 
+    const loginData = isEmail
       ? { email: loginIdentifier, password }
       : { contact_number: loginIdentifier, password };
-  
+
     try {
       const response = await axios.post(
-        " https://query-q-backend.vercel.app/api/admin/login",
+        "https://higherpolynomial-node.vercel.app/api/login",
         loginData,
         { headers: { "Content-Type": "application/json" } }
       );
-  
-      if (response.data.message === "Login successful.") {
+
+      if (response.status === 200) {
         toast.success("Login successful! Redirecting...", { position: "top-right" });
-        
-        // Save admin data to AuthContext
-        login(response.data.vendor);
-  
-        // Store service_type and id in sessionStorage
-        sessionStorage.setItem('serviceType', response.data.vendor.service_type);
-        sessionStorage.setItem('vendorId', response.data.vendor.id);
-  
+
+        // Save admin data and token to AuthContext
+        // Backend returns { user, token }
+        login(response.data.user, response.data.token);
+
         setTimeout(() => {
           navigate("/admin-dashboard");
         }, 1000);
@@ -111,7 +108,7 @@ const AdminLogin = () => {
             Admin Login to Higher Polynomial
           </h2>
         </Link>
-        
+
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="relative group">
             <label className="block text-gray-700 font-medium mb-2 transition-all duration-300 group-focus-within:text-purple-600">
@@ -179,8 +176,8 @@ const AdminLogin = () => {
 
         <p className="text-center text-gray-600 mt-6">
           Don't have an account?{" "}
-          <Link 
-            to="/professional" 
+          <Link
+            to="/professional"
             className="text-purple-600 hover:text-purple-800 font-medium transition-colors duration-300"
           >
             Sign Up
