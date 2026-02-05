@@ -5,6 +5,7 @@ import { AuthContext } from '../auth/AuthContext';
 import AvailabilitySlotSelector from '../components/AvailabilitySlotSelector';
 
 import { toast } from 'react-toastify';
+import Hls from 'hls.js';
 
 const UserCourseDetails = () => {
     const { id } = useParams();
@@ -21,6 +22,95 @@ const UserCourseDetails = () => {
     const [doubtDescription, setDoubtDescription] = useState('');
     const [selectedSlotId, setSelectedSlotId] = useState(null);
     const [isSubmittingDoubt, setIsSubmittingDoubt] = useState(false);
+    const [watermarkPos, setWatermarkPos] = useState({ top: '10%', left: '10%' });
+    const videoRef = React.useRef(null);
+
+    // Custom Player State
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
+    const [volume, setVolume] = useState(1);
+    const [isMuted, setIsMuted] = useState(false);
+    const [isBuffering, setIsBuffering] = useState(false);
+    const [showControls, setShowControls] = useState(true);
+    let controlsTimeout = null;
+
+    const togglePlay = () => {
+        if (!videoRef.current) return;
+        if (isPlaying) videoRef.current.pause();
+        else videoRef.current.play();
+        setIsPlaying(!isPlaying);
+    };
+
+    const handleProgress = (e) => {
+        const val = parseFloat(e.target.value);
+        videoRef.current.currentTime = val;
+        setCurrentTime(val);
+    };
+
+    const formatTime = (time) => {
+        const mins = Math.floor(time / 60);
+        const secs = Math.floor(time % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const handleMouseMove = () => {
+        setShowControls(true);
+        clearTimeout(controlsTimeout);
+        controlsTimeout = setTimeout(() => setShowControls(false), 3000);
+    };
+
+    // 🛡️ Dynamic Watermark Movement
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setWatermarkPos({
+                top: `${Math.floor(Math.random() * 80 + 5)}%`,
+                left: `${Math.floor(Math.random() * 70 + 5)}%`
+            });
+        }, 5000); // Move every 5 seconds
+        return () => clearInterval(interval);
+    }, []);
+
+    // 🛡️ HLS & BLOB Initialization
+    useEffect(() => {
+        let blobUrl = null;
+        if (currentView === 'video' && activeLesson?.video_url && videoRef.current) {
+            const video = videoRef.current;
+            const videoUrl = activeLesson.video_url;
+
+            if (videoUrl.includes('.m3u8')) {
+                if (Hls.isSupported()) {
+                    const hls = new Hls();
+                    hls.loadSource(videoUrl);
+                    hls.attachMedia(video);
+                    return () => hls.destroy();
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    video.src = videoUrl;
+                }
+            } else {
+                // MP4 Hardening: Fetch as blob to hide raw URL from DOM
+                // This prevents easy 'right-click copy link' or 'IDM sniff'
+                const loadAsBlob = async () => {
+                    try {
+                        setIsBuffering(true);
+                        const response = await fetch(videoUrl);
+                        const blob = await response.blob();
+                        blobUrl = URL.createObjectURL(blob);
+                        video.src = blobUrl;
+                        setIsBuffering(false);
+                    } catch (err) {
+                        console.error("Blob loading failed, falling back to direct URL", err);
+                        video.src = videoUrl;
+                        setIsBuffering(false);
+                    }
+                };
+                loadAsBlob();
+            }
+        }
+        return () => {
+            if (blobUrl) URL.revokeObjectURL(blobUrl);
+        };
+    }, [currentView, activeLesson]);
 
     useEffect(() => {
         fetchCourseDetails();
@@ -37,25 +127,35 @@ const UserCourseDetails = () => {
             }
         };
 
-        // 🛡️ Global Security: Prevent Print Screen (basic approach)
+        // 🛡️ Global Security: Prevent Right Click
         const handleContextMenu = (e) => e.preventDefault();
-
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('contextmenu', handleContextMenu);
 
-        // Periodically check for DevTools (optional but adds a layer)
-        const devtoolsInterval = setInterval(() => {
-            const threshold = 160;
-            if (window.outerWidth - window.innerWidth > threshold || window.outerHeight - window.innerHeight > threshold) {
-                // If devtools is detected, we could pause video or clear content
-                // For now, let's just keep it simple.
-            }
-        }, 1000);
+        // 🛡️ ANTI-IDM WATCHDOG: Actively remove injected download buttons
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === 1) { // Element node
+                        // Common IDM selectors/patterns
+                        if (
+                            node.id?.toLowerCase().includes('idm') ||
+                            node.className?.toLowerCase()?.includes?.('idm') ||
+                            node.tagName === 'IDM-DOWNLOAD-BAR'
+                        ) {
+                            node.remove();
+                        }
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
 
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('contextmenu', handleContextMenu);
-            clearInterval(devtoolsInterval);
+            observer.disconnect();
         };
     }, [id]);
 
@@ -366,58 +466,124 @@ const UserCourseDetails = () => {
                     <div className="space-y-8 animate-in slide-in-from-right duration-300">
                         {/* Player Container */}
                         <div
-                            className="bg-black rounded-2xl overflow-hidden shadow-2xl aspect-video relative ring-1 ring-white/10"
+                            className="bg-black rounded-2xl overflow-hidden shadow-2xl aspect-video relative ring-1 ring-white/10 group"
                             onContextMenu={(e) => e.preventDefault()}
-                            onCopy={(e) => e.preventDefault()}
-                            onCut={(e) => e.preventDefault()}
-                            onPaste={(e) => e.preventDefault()}
-                            onDragStart={(e) => e.preventDefault()}
-                            onDrop={(e) => e.preventDefault()}
                         >
                             {isAuthenticated ? (
                                 <>
                                     <video
-                                        src={activeLesson.video_url}
-                                        controls
-                                        controlsList="nodownload noremoteplayback"
+                                        ref={videoRef}
+                                        // 🛡️ NO CONTROLS - Blocks most extensions from hooking in
                                         disablePictureInPicture
                                         disableRemotePlayback
                                         onContextMenu={(e) => e.preventDefault()}
-                                        className="w-full h-full object-contain pointer-events-auto"
+                                        className="w-full h-full object-contain pointer-events-none" // 🛡️ Pointer events none makes it invisible to clicks
                                         poster={activeLesson.thumbnail || course.thumbnail}
                                         autoPlay
                                         style={{ userSelect: 'none' }}
-                                        onKeyDown={(e) => {
-                                            // Prevent common download shortcuts
-                                            if (
-                                                (e.ctrlKey && e.key === 's') || // Ctrl+S
-                                                (e.ctrlKey && e.shiftKey && e.key === 'I') || // Ctrl+Shift+I
-                                                (e.key === 'F12') || // F12
-                                                (e.ctrlKey && e.shiftKey && e.key === 'J') || // Ctrl+Shift+J
-                                                (e.ctrlKey && e.key === 'u') // Ctrl+U
-                                            ) {
-                                                e.preventDefault();
-                                                return false;
-                                            }
-                                        }}
+                                        onTimeUpdate={() => setCurrentTime(videoRef.current.currentTime)}
+                                        onLoadedMetadata={() => setDuration(videoRef.current.duration)}
+                                        onPlay={() => setIsPlaying(true)}
+                                        onPause={() => setIsPlaying(false)}
+                                        onWaiting={() => setIsBuffering(true)}
+                                        onPlaying={() => setIsBuffering(false)}
                                     >
                                         Your browser does not support the video tag.
                                     </video>
 
-                                    {/* Watermark Overlay - Prevents screen recording identification */}
+                                    {/* 🛡️ TRANSPARENT SHIELD - Catch interactions and blockSniffers */}
                                     <div
-                                        className="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded text-xs font-mono pointer-events-none select-none"
-                                        style={{ userSelect: 'none' }}
+                                        className="absolute inset-x-0 top-0 bottom-20 z-[1] bg-transparent cursor-default pointer-events-auto"
+                                        onContextMenu={(e) => e.preventDefault()}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            togglePlay();
+                                        }}
+                                        title=""
+                                    />
+
+                                    {/* 🛡️ KEYBOARD SHORTCUTS HANDLER */}
+                                    <div
+                                        tabIndex="0"
+                                        className="absolute inset-0 focus:outline-none pointer-events-none z-[2]"
+                                        onKeyDown={(e) => {
+                                            if (!videoRef.current) return;
+                                            if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
+                                            if (e.key === ' ' || e.key === 'k') togglePlay();
+                                            if (e.key === 'ArrowRight' || e.key === 'l') videoRef.current.currentTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 10);
+                                            if (e.key === 'ArrowLeft' || e.key === 'j') videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10);
+                                            if (e.key === 'f') {
+                                                const container = videoRef.current.parentElement;
+                                                if (document.fullscreenElement) document.exitFullscreen();
+                                                else container.requestFullscreen();
+                                            }
+                                        }}
+                                    />
+
+                                    {/* 🛡️ BUFFERING OVERLAY */}
+                                    {isBuffering && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none z-[8]">
+                                            <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+                                        </div>
+                                    )}
+
+                                    {/* 🛡️ CUSTOM CONTROL BAR */}
+                                    <div
+                                        className={`absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-[20] transition-opacity duration-300 ${showControls || !isPlaying ? 'opacity-100' : 'opacity-0'}`}
+                                        onMouseMove={handleMouseMove}
                                     >
-                                        {user?.email || 'Protected Content'}
+                                        <div className="relative mb-4">
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max={duration || 0}
+                                                value={currentTime}
+                                                onChange={handleProgress}
+                                                className="w-full h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-blue-600 hover:h-2 transition-all"
+                                            />
+                                        </div>
+
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-6">
+                                                <button onClick={togglePlay} className="text-white hover:text-blue-400 transition text-xl">
+                                                    {isPlaying ? '⏸' : '▶'}
+                                                </button>
+                                                <div className="text-white text-xs font-mono">
+                                                    {formatTime(currentTime)} / {formatTime(duration)}
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    const container = videoRef.current.parentElement;
+                                                    if (document.fullscreenElement) document.exitFullscreen();
+                                                    else container.requestFullscreen();
+                                                }}
+                                                className="text-white hover:text-blue-400 transition text-xl"
+                                            >
+                                                ⛶
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    {/* Invisible overlay to prevent inspect element on video */}
+                                    {/* 🛡️ MOVING WATERMARK - Prevents useful screen recording */}
                                     <div
-                                        className="absolute inset-0 pointer-events-none"
-                                        style={{ userSelect: 'none' }}
-                                        onContextMenu={(e) => e.preventDefault()}
-                                    />
+                                        className="absolute bg-white/10 backdrop-blur-sm text-white/40 px-3 py-1 rounded-full text-[10px] md:text-xs font-mono pointer-events-none select-none z-[10] transition-all duration-1000 ease-in-out border border-white/5"
+                                        style={{
+                                            top: watermarkPos.top,
+                                            left: watermarkPos.left,
+                                            userSelect: 'none'
+                                        }}
+                                    >
+                                        {user?.email || 'Protected Content'} • {new Date().toLocaleDateString()}
+                                    </div>
+
+                                    {/* 🛡️ INVISIBLE LOGO OVERLAY - Deterrent */}
+                                    <div className="absolute top-4 left-4 opacity-20 pointer-events-none select-none z-[5]">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-black italic">Q</div>
+                                            <span className="text-white font-bold text-sm tracking-tight">HigherPolynomial</span>
+                                        </div>
+                                    </div>
                                 </>
                             ) : (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 backdrop-blur-sm p-6 text-center space-y-6">
