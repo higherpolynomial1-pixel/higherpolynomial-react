@@ -71,9 +71,8 @@ const UserCourseDetails = () => {
         return () => clearInterval(interval);
     }, []);
 
-    // 🛡️ HLS & BLOB Initialization
+    // 🛡️ HLS & Video Initialization
     useEffect(() => {
-        let blobUrl = null;
         if (currentView === 'video' && activeLesson?.video_url && videoRef.current) {
             const video = videoRef.current;
             const videoUrl = activeLesson.video_url;
@@ -88,28 +87,10 @@ const UserCourseDetails = () => {
                     video.src = videoUrl;
                 }
             } else {
-                // MP4 Hardening: Fetch as blob to hide raw URL from DOM
-                // This prevents easy 'right-click copy link' or 'IDM sniff'
-                const loadAsBlob = async () => {
-                    try {
-                        setIsBuffering(true);
-                        const response = await fetch(videoUrl);
-                        const blob = await response.blob();
-                        blobUrl = URL.createObjectURL(blob);
-                        video.src = blobUrl;
-                        setIsBuffering(false);
-                    } catch (err) {
-                        console.error("Blob loading failed, falling back to direct URL", err);
-                        video.src = videoUrl;
-                        setIsBuffering(false);
-                    }
-                };
-                loadAsBlob();
+                // Return to direct Signed URL usage (Blob loading failed/was too extreme)
+                video.src = videoUrl;
             }
         }
-        return () => {
-            if (blobUrl) URL.revokeObjectURL(blobUrl);
-        };
     }, [currentView, activeLesson]);
 
     useEffect(() => {
@@ -137,11 +118,16 @@ const UserCourseDetails = () => {
             mutations.forEach((mutation) => {
                 mutation.addedNodes.forEach((node) => {
                     if (node.nodeType === 1) { // Element node
-                        // Common IDM selectors/patterns
+                        const lowerId = node.id?.toLowerCase() || '';
+                        const lowerClass = typeof node.className === 'string' ? node.className.toLowerCase() : '';
+
+                        // Targeted removal for IDM and other common downloader extensions
                         if (
-                            node.id?.toLowerCase().includes('idm') ||
-                            node.className?.toLowerCase()?.includes?.('idm') ||
-                            node.tagName === 'IDM-DOWNLOAD-BAR'
+                            lowerId.includes('idm') ||
+                            lowerClass.includes('idm') ||
+                            node.tagName.includes('IDM') ||
+                            lowerId.includes('download-bar') ||
+                            lowerClass.includes('download-button')
                         ) {
                             node.remove();
                         }
@@ -473,11 +459,10 @@ const UserCourseDetails = () => {
                                 <>
                                     <video
                                         ref={videoRef}
-                                        // 🛡️ NO CONTROLS - Blocks most extensions from hooking in
                                         disablePictureInPicture
                                         disableRemotePlayback
                                         onContextMenu={(e) => e.preventDefault()}
-                                        className="w-full h-full object-contain pointer-events-none" // 🛡️ Pointer events none makes it invisible to clicks
+                                        className="w-full h-full object-contain pointer-events-auto"
                                         poster={activeLesson.thumbnail || course.thumbnail}
                                         autoPlay
                                         style={{ userSelect: 'none' }}
@@ -574,7 +559,7 @@ const UserCourseDetails = () => {
                                             userSelect: 'none'
                                         }}
                                     >
-                                        {user?.email || 'Protected Content'} • {new Date().toLocaleDateString()}
+                                        HigherPolynomial • Protected Content • {new Date().toLocaleDateString()}
                                     </div>
 
                                     {/* 🛡️ INVISIBLE LOGO OVERLAY - Deterrent */}
