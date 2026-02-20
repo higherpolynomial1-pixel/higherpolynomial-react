@@ -398,7 +398,7 @@ function CreateCoursePage({ isEdit = false }) {
         const videoUrl = await uploadToS3Directly(formData.promoVideo);
         const notesUrl = await uploadToS3Directly(formData.notes);
 
-        const url = isEdit ? `https://higherpolynomial-node.vercel.app/api/courses/${courseId}` : 'http://localhost:3000/api/courses';
+        const url = isEdit ? `https://higherpolynomial-node.vercel.app/api/courses/${courseId}` : 'https://higherpolynomial-node.vercel.app/api/courses';
         const method = isEdit ? 'PUT' : 'POST';
 
         const response = await fetch(url, {

@@ -11,8 +11,10 @@ window.fetch = async (...args) => {
   let [resource, config] = args;
   const url = typeof resource === 'string' ? resource : resource.url;
 
-  // Only inject token for our own API requests to localhost or the production domain
-  const isOurApi = url.includes('localhost:3000') || url.includes('higherpolynomial-node.vercel.app');
+  // Only inject token for our own API requests
+  const isOurApi = url.includes('localhost:3000') ||
+    url.includes('higherpolynomial-node.vercel.app') ||
+    url.includes('higherpolynomial.com');
 
   if (globalToken && isOurApi) {
     console.log("[Fetch Interceptor] Injecting token for:", url);
