@@ -311,6 +311,7 @@ function CreateCoursePage({ isEdit = false }) {
   });
   const [errors, setErrors] = useState({});
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
+  const [courseData, setCourseData] = useState(null);
   const [loading, setLoading] = useState(isEdit);
 
   useEffect(() => {
@@ -319,19 +320,29 @@ function CreateCoursePage({ isEdit = false }) {
     }
   }, [isEdit, courseId]);
 
+  useEffect(() => {
+    let interval;
+    if (isEdit && courseId && (courseData?.course?.video_conversion_status === 'pending' ||
+      courseData?.course?.video_conversion_status === 'processing')) {
+      interval = setInterval(fetchCourseData, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [isEdit, courseId, courseData?.course?.video_conversion_status]);
+
   const fetchCourseData = async () => {
     try {
       const response = await fetch(`https://higherpolynomial-node.vercel.app/api/courses/${courseId}`);
       if (response.ok) {
         const data = await response.json();
         const course = data.course;
+        setCourseData(data);
         setFormData({
           title: course.title,
           description: course.description,
           category: course.category,
           price: course.price,
           thumbnail: null,
-          promoVideo: null,
+          promoVideo: course.video_url, // Set the URL from backend
           notes: null
         });
         setThumbnailPreview(course.thumbnail);
@@ -577,7 +588,28 @@ function CreateCoursePage({ isEdit = false }) {
                   <div className="flex items-center space-x-3">
                     <Video className="text-blue-600" size={24} />
                     <div className="text-left">
-                      <p className="text-sm font-medium text-gray-700">{formData.promoVideo.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-700">
+                          {formData.promoVideo instanceof File ? formData.promoVideo.name : 'Promotional Video'}
+                        </p>
+                        {/* Conversion Status Badge for Edit Mode */}
+                        {isEdit && courseData?.course?.video_conversion_status === 'pending' && (
+                          <span className="px-1.5 py-0.5 text-[10px] bg-yellow-100 text-yellow-700 rounded-full animate-pulse">
+                            Pending HLS
+                          </span>
+                        )}
+                        {isEdit && courseData?.course?.video_conversion_status === 'processing' && (
+                          <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded-full flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></span>
+                            Converting...
+                          </span>
+                        )}
+                        {isEdit && courseData?.course?.video_conversion_status === 'completed' && (
+                          <span className="px-1.5 py-0.5 text-[10px] bg-green-100 text-green-700 rounded-full">
+                            HLS Protected
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-500">Video preview will play here</p>
                     </div>
                   </div>
@@ -714,6 +746,20 @@ function ManagePlaylistsPage() {
       fetchCourseAndPlaylists();
     }
   }, [courseId]);
+
+  useEffect(() => {
+    let interval;
+    if (courseId) {
+      const hasActiveConversion = playlists?.some(p =>
+        p.videos?.some(v => ['pending', 'processing'].includes(v.conversion_status))
+      );
+
+      if (hasActiveConversion) {
+        interval = setInterval(fetchPlaylists, 5000);
+      }
+    }
+    return () => clearInterval(interval);
+  }, [courseId, playlists]); // We keep playlists here to re-evaluate if we need to STOP polling, but fetchPlaylists updating playlists won't trigger fetchPlaylists immediately again if nothing is converting. But actually, fetchPlaylists will update playlists, which will trigger this effect again. If something is still converting, it will set another interval.
 
   const fetchCourseAndPlaylists = async () => {
     setLoading(true);
@@ -1219,7 +1265,31 @@ function ManagePlaylistsPage() {
                                 {vid.thumbnail && <img src={vid.thumbnail} className="w-full h-full object-cover" />}
                               </div>
                               <div>
-                                <p className="text-sm font-medium text-gray-900">{idx + 1}. {vid.title}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-medium text-gray-900">{idx + 1}. {vid.title}</p>
+                                  {/* Conversion Status Badge */}
+                                  {vid.conversion_status === 'pending' && (
+                                    <span className="px-1.5 py-0.5 text-[10px] bg-yellow-100 text-yellow-700 rounded-full border border-yellow-200 animate-pulse">
+                                      Pending HLS
+                                    </span>
+                                  )}
+                                  {vid.conversion_status === 'processing' && (
+                                    <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded-full border border-blue-200 flex items-center gap-1">
+                                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></span>
+                                      Converting...
+                                    </span>
+                                  )}
+                                  {vid.conversion_status === 'completed' && (
+                                    <span className="px-1.5 py-0.5 text-[10px] bg-green-100 text-green-700 rounded-full border border-green-200">
+                                      HLS Protected
+                                    </span>
+                                  )}
+                                  {vid.conversion_status === 'failed' && (
+                                    <span className="px-1.5 py-0.5 text-[10px] bg-red-100 text-red-700 rounded-full border border-red-200" title="MP4 Fallback active">
+                                      HLS Failed
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="text-xs text-gray-500">{vid.duration || '00:00'}</p>
                               </div>
                             </div>

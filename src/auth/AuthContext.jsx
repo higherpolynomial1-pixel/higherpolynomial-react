@@ -1,8 +1,43 @@
 
-
 import React, { createContext, useState, useEffect } from "react";
 
 export const AuthContext = createContext();
+
+// Global token storage for the fetch interceptor (avoids lifecycle timing issues)
+let globalToken = localStorage.getItem("token") || null;
+const originalFetch = window.fetch;
+
+window.fetch = async (...args) => {
+  let [resource, config] = args;
+  const url = typeof resource === 'string' ? resource : resource.url;
+
+  // Only inject token for our own API requests to localhost or the production domain
+  const isOurApi = url.includes('localhost:3000') || url.includes('higherpolynomial-node.vercel.app');
+
+  if (globalToken && isOurApi) {
+    console.log("[Fetch Interceptor] Injecting token for:", url);
+    config = config || {};
+    config.headers = config.headers || {};
+
+    if (config.headers instanceof Headers) {
+      config.headers.set('Authorization', `Bearer ${globalToken}`);
+    } else {
+      config.headers['Authorization'] = `Bearer ${globalToken}`;
+    }
+  }
+
+  try {
+    const response = await originalFetch(resource, config);
+    if (response.status === 401 && isOurApi) {
+      console.log("[Fetch Interceptor] 401 Unauthorized for:", url);
+      // We can't easily call logout() here because it's outside the component,
+      // but the component itself should handle the 401 by checking its context or re-auth flow.
+    }
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(
@@ -19,7 +54,9 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(true);
     setUser(userData);
     setToken(userToken);
+    globalToken = userToken; // Update the global interceptor token
 
+    console.log("AuthContext: Login called. Token Version Updated");
     localStorage.setItem("isAuthenticated", "true");
     localStorage.setItem("user", JSON.stringify(userData));
     localStorage.setItem("token", userToken);
@@ -30,6 +67,7 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
     setUser(null);
     setToken(null);
+    globalToken = null; // Clear the global interceptor token
 
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("user");
@@ -39,51 +77,15 @@ export const AuthProvider = ({ children }) => {
   // ✅ Restore session from storage
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
+    const storedToken = localStorage.getItem("token");
     if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
+      setUser(JSON.parse(storedUser));
+    }
+    if (storedToken) {
+      setToken(storedToken);
+      globalToken = storedToken;
     }
   }, []);
-
-  // ✅ Global Fetch Interceptor
-  useEffect(() => {
-    const originalFetch = window.fetch;
-
-    window.fetch = async (...args) => {
-      let [resource, config] = args;
-
-      // Inject Token
-      if (token) {
-        config = config || {};
-        config.headers = config.headers || {};
-        // Handle both simple object headers and Headers object
-        if (config.headers instanceof Headers) {
-          config.headers.set('Authorization', `Bearer ${token}`);
-        } else {
-          config.headers['Authorization'] = `Bearer ${token}`;
-        }
-      }
-
-      try {
-        const response = await originalFetch(resource, config);
-
-        // Handle Session Expiry
-        if (response.status === 401) {
-          logout();
-          // Optional: Display toast if you have access to toast here, 
-          // or just rely on the redirect that usually happens when isAuthenticated becomes false
-        }
-
-        return response;
-      } catch (error) {
-        throw error;
-      }
-    };
-
-    return () => {
-      window.fetch = originalFetch;
-    };
-  }, [token]);
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, token, login, logout }}>

@@ -25,6 +25,12 @@ const UserCourseDetails = () => {
     const [watermarkPos, setWatermarkPos] = useState({ top: '10%', left: '10%' });
     const videoRef = React.useRef(null);
 
+    // 🛡️ Enhanced Security State
+    const [devToolsOpen, setDevToolsOpen] = useState(false);
+    const [recordingDetected, setRecordingDetected] = useState(false);
+    const [blobUrl, setBlobUrl] = useState(null);
+    const hlsInstanceRef = React.useRef(null);
+
     // Custom Player State
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -71,24 +77,123 @@ const UserCourseDetails = () => {
         return () => clearInterval(interval);
     }, []);
 
-    // 🛡️ HLS & Video Initialization
+    // 🛡️ HLS & Video Initialization with Blob URL Protection
     useEffect(() => {
         if (currentView === 'video' && activeLesson?.video_url && videoRef.current) {
             const video = videoRef.current;
-            const videoUrl = activeLesson.video_url;
+            let videoUrl = activeLesson.video_url;
 
-            if (videoUrl.includes('.m3u8')) {
+            if (videoUrl.includes('.dat') || videoUrl.includes('.m3u8')) {
+                // 🛡️ POINT TO MANIFEST PROXY: Resolves protocol mismatch (HTTPS/HTTP)
+                // Also ensures authorization headers are handled for the manifest request
+                const proxyUrl = `https://higherpolynomial-node.vercel.app/api/videos/manifest/video/${activeLesson.id}`;
+                videoUrl = proxyUrl;
+
+                // HLS Streaming (Encrypted)
                 if (Hls.isSupported()) {
-                    const hls = new Hls();
+                    const token = localStorage.getItem('token');
+                    const hls = new Hls({
+                        enableWorker: true,
+                        lowLatencyMode: false,
+                        backBufferLength: 90,
+                        xhrSetup: (xhr, url) => {
+                            // Attach token for both manifest and key requests
+                            if (url.includes('/api/videos/manifest/') || url.includes('/api/videos/key/')) {
+                                console.log(`[HLS Proxy] Fetching auth resource: ${url}`);
+                                xhr.withCredentials = true;
+                                if (token) {
+                                    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+                                }
+                            }
+                        }
+                    });
+
+                    hls.on(Hls.Events.ERROR, (event, data) => {
+                        console.error('[HLS Error]', data);
+
+                        // Handle Authentication/Session Failures (401)
+                        if (data.response && data.response.code === 401) {
+                            console.error('[HLS Auth Error] Token rejected or expired');
+                            toast.error('Your session has expired. Please log out and login again to play the video.', {
+                                position: 'top-center',
+                                autoClose: 5000,
+                                toastId: 'hls-auth-error'
+                            });
+                            setError('Session expired. Please re-login.');
+                            return;
+                        }
+
+                        if (data.fatal) {
+                            switch (data.type) {
+                                case Hls.ErrorTypes.NETWORK_ERROR:
+                                    console.error('Fatal network error, trying to recover...');
+                                    hls.startLoad();
+                                    break;
+                                case Hls.ErrorTypes.MEDIA_ERROR:
+                                    console.error('Fatal media error, trying to recover...');
+                                    hls.recoverMediaError();
+                                    break;
+                                default:
+                                    console.error('Unrecoverable HLS error');
+                                    setError('Failed to load video stream');
+                                    hls.destroy();
+                                    break;
+                            }
+                        }
+                    });
+
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        console.log('[HLS] Manifest parsed, segments loading...');
+                    });
+
+                    console.log(`[HLS] Loading source: ${videoUrl}`);
                     hls.loadSource(videoUrl);
                     hls.attachMedia(video);
-                    return () => hls.destroy();
+                    hlsInstanceRef.current = hls;
+
+                    return () => {
+                        if (hlsInstanceRef.current) {
+                            hlsInstanceRef.current.destroy();
+                            hlsInstanceRef.current = null;
+                        }
+                    };
                 } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                     video.src = videoUrl;
                 }
             } else {
-                // Return to direct Signed URL usage (Blob loading failed/was too extreme)
-                video.src = videoUrl;
+                // 🛡️ BLOB URL LOADING - Makes URL non-shareable
+                const loadVideoAsBlob = async () => {
+                    try {
+                        setIsBuffering(true);
+                        const response = await fetch(videoUrl, {
+                            credentials: 'include',
+                            headers: {
+                                'Accept': 'video/*'
+                            }
+                        });
+
+                        if (!response.ok) throw new Error('Failed to load video');
+
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(blob);
+                        setBlobUrl(url);
+                        video.src = url;
+                        setIsBuffering(false);
+                    } catch (error) {
+                        console.error('Blob loading failed, falling back to direct URL:', error);
+                        video.src = videoUrl; // Fallback
+                        setIsBuffering(false);
+                    }
+                };
+
+                loadVideoAsBlob();
+
+                return () => {
+                    if (blobUrl) {
+                        URL.revokeObjectURL(blobUrl);
+                        setBlobUrl(null);
+                    }
+                };
             }
         }
     }, [currentView, activeLesson]);
@@ -113,37 +218,218 @@ const UserCourseDetails = () => {
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('contextmenu', handleContextMenu);
 
-        // 🛡️ ANTI-IDM WATCHDOG: Actively remove injected download buttons
+        // 🛡️ ANTI-DOWNLOAD EXTENSION HYPER-CLEANUP (CSS & DOM Watchdog)
+        const style = document.createElement('style');
+        style.textContent = `
+            [id*="idm"], [class*="idm"], idm-download-bar, .idm_download_button, #idm_download_bar_container,
+            [title*="IDM"], [aria-label*="IDM"], .idm-download-bar-container, div[style*="background-image: url("][style*="idm"],
+            [id*="jdownloader"], [class*="jdownloader"], [id*="download"], [class*="download-helper"],
+            [class*="video-download"], [id*="video-download"], [class*="stream-recorder"], [id*="stream-recorder"],
+            [aria-label*="download this video"], [title*="download this video"], [title*="Download"],
+            [class*="extension-"], [id*="extension-"], [class*="downloader"], [id*="downloader"],
+            .vdh-download-button, #vdh-overlay, .flash-video-downloader, #fdm-button,
+            #idm_btn, .idm_btn, #idm_download_bar, .idm_download_bar, 
+            div[id^="_idm_"], div[class^="_idm_"], [id*="grabber"], [class*="grabber"],
+            [id*="download"]:not(#root *), [class*="download"]:not(#root *) {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+                width: 1px !important;
+                height: 1px !important;
+                overflow: hidden !important;
+                position: absolute !important;
+                left: -9999px !important;
+            }
+        `;
+        document.head.appendChild(style);
+
+        const extensionCleanup = setInterval(() => {
+            const forbiddenTags = ['HTML', 'HEAD', 'BODY', 'STYLE', 'LINK', 'SCRIPT', 'META', 'TITLE', 'NOSCRIPT', 'SVG', 'PATH'];
+
+            // Fast removal of known extension tags
+            const extensionTags = document.querySelectorAll('idm-download-bar, .idm_download_button, #idm_btn, .idm_btn, div[id^="_idm_"], [class*="idm_btn"]');
+            extensionTags.forEach(node => {
+                try { node.style.display = 'none'; node.remove(); } catch (e) { }
+            });
+
+            // Deep clean
+            const all = document.getElementsByTagName('*');
+            for (let i = 0; i < all.length; i++) {
+                const node = all[i];
+                if (node.id === 'root' || forbiddenTags.includes(node.tagName)) continue;
+
+                const id = node.id?.toLowerCase() || '';
+                const cls = typeof node.className === 'string' ? node.className.toLowerCase() : '';
+                const text = node.innerText?.toLowerCase() || '';
+
+                if (
+                    id.includes('idm') || cls.includes('idm') || id.includes('jdownloader') ||
+                    text === 'download this video' || text.includes('download this video') ||
+                    (text.includes('idm') && text.includes('download'))
+                ) {
+                    try { node.style.display = 'none'; node.remove(); } catch (e) { }
+                }
+            }
+        }, 100); // 🚀 ULTRA AGGRESSIVE: 100ms
+
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 mutation.addedNodes.forEach((node) => {
                     if (node.nodeType === 1) { // Element node
+                        const forbiddenTags = ['HTML', 'HEAD', 'BODY', 'STYLE', 'LINK', 'SCRIPT', 'META', 'TITLE', 'NOSCRIPT', 'SVG', 'PATH'];
+                        if (forbiddenTags.includes(node.tagName)) return;
+
                         const lowerId = node.id?.toLowerCase() || '';
                         const lowerClass = typeof node.className === 'string' ? node.className.toLowerCase() : '';
+                        const text = node.innerText?.toLowerCase() || '';
+                        const title = node.getAttribute?.('title')?.toLowerCase() || '';
+                        const ariaLabel = node.getAttribute?.('aria-label')?.toLowerCase() || '';
 
-                        // Targeted removal for IDM and other common downloader extensions
+                        const isUIElement = ['DIV', 'SPAN', 'A', 'P', 'BUTTON', 'IFRAME', 'IMG', 'IDM-DOWNLOAD-BAR'].includes(node.tagName);
+
                         if (
-                            lowerId.includes('idm') ||
-                            lowerClass.includes('idm') ||
-                            node.tagName.includes('IDM') ||
-                            lowerId.includes('download-bar') ||
-                            lowerClass.includes('download-button')
+                            isUIElement && (
+                                lowerId.includes('idm-') || lowerId.includes('jdownloader') ||
+                                lowerClass.includes('idm-') || lowerClass.includes('jdownloader') ||
+                                text === 'download this video' ||
+                                (node.style && node.style.backgroundImage && node.style.backgroundImage.includes('idm'))
+                            )
                         ) {
-                            node.remove();
+                            try {
+                                node.remove();
+                            } catch (e) { }
                         }
                     }
                 });
             });
         });
 
-        observer.observe(document.body, { childList: true, subtree: true });
+        observer.observe(document.documentElement, { childList: true, subtree: true });
 
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('contextmenu', handleContextMenu);
             observer.disconnect();
+            clearInterval(extensionCleanup);
+            if (style.parentNode) document.head.removeChild(style);
         };
     }, [id]);
+
+    // 🛡️ DevTools Detection & Screen Recording Detection
+    useEffect(() => {
+        if (currentView !== 'video' || !videoRef.current) return;
+
+        let devToolsCheckInterval;
+        let screenRecordingCheckInterval;
+
+        // DevTools Detection - Multiple methods
+        const checkDevTools = () => {
+            const widthThreshold = window.outerWidth - window.innerWidth > 160;
+            const heightThreshold = window.outerHeight - window.innerHeight > 160;
+            const orientation = widthThreshold ? 'vertical' : 'horizontal';
+
+            // Method 1: Window size difference
+            if (widthThreshold || heightThreshold) {
+                if (!devToolsOpen) {
+                    setDevToolsOpen(true);
+                    if (videoRef.current && !videoRef.current.paused) {
+                        videoRef.current.pause();
+                        setIsPlaying(false);
+                        toast.warning('Video paused: Developer tools detected', {
+                            position: 'top-center',
+                            autoClose: 3000
+                        });
+                    }
+                }
+            } else {
+                if (devToolsOpen) {
+                    setDevToolsOpen(false);
+                }
+            }
+
+            // Method 2: Console detection
+            const element = new Image();
+            Object.defineProperty(element, 'id', {
+                get: function () {
+                    if (!devToolsOpen) {
+                        setDevToolsOpen(true);
+                        if (videoRef.current && !videoRef.current.paused) {
+                            videoRef.current.pause();
+                            setIsPlaying(false);
+                        }
+                    }
+                    throw new Error('DevTools detected');
+                }
+            });
+        };
+
+        // Screen Recording Detection (limited browser support)
+        const checkScreenRecording = async () => {
+            try {
+                // Check if getDisplayMedia is being used (screen capture)
+                if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+                    // This is a heuristic - we can't directly detect recording
+                    // but we can detect if screen capture API was recently used
+                    const isRecording = document.hidden === false && document.visibilityState === 'visible';
+
+                    if (isRecording && !recordingDetected) {
+                        setRecordingDetected(true);
+                        // Don't pause, just show warning overlay
+                    }
+                }
+            } catch (e) {
+                // Screen recording detection not supported
+            }
+        };
+
+        // Run checks periodically
+        devToolsCheckInterval = setInterval(checkDevTools, 1000);
+        screenRecordingCheckInterval = setInterval(checkScreenRecording, 2000);
+
+        // Clipboard protection - prevent copying video URLs
+        const handleCopy = (e) => {
+            const selection = window.getSelection().toString();
+            if (selection.includes('blob:') || selection.includes('.mp4') || selection.includes('.m3u8')) {
+                e.preventDefault();
+                toast.error('Copying video URLs is not allowed', {
+                    position: 'top-center',
+                    autoClose: 2000
+                });
+            }
+        };
+
+        document.addEventListener('copy', handleCopy);
+
+        return () => {
+            clearInterval(devToolsCheckInterval);
+            clearInterval(screenRecordingCheckInterval);
+            document.removeEventListener('copy', handleCopy);
+        };
+    }, [currentView, devToolsOpen, recordingDetected]);
+
+
+    // 🛡️ Shadow DOM Wrapper for Video Player
+    const playerContainerRef = React.useRef(null);
+    useEffect(() => {
+        if (currentView === 'video' && activeLesson && playerContainerRef.current) {
+            const container = playerContainerRef.current;
+            // Only attach if not already attached
+            if (!container.shadowRoot) {
+                const shadow = container.attachShadow({ mode: 'open' });
+                const slot = document.createElement('slot');
+                shadow.appendChild(slot);
+
+                // Inject Tailwind-like styles into Shadow DOM to ensure player looks right
+                const style = document.createElement('style');
+                style.textContent = `
+                    :host { display: block; position: relative; width: 100%; aspect-ratio: 16/9; background: black; border-radius: 1rem; overflow: hidden; }
+                    ::slotted(video) { width: 100%; height: 100%; object-fit: contain; }
+                `;
+                shadow.appendChild(style);
+            }
+        }
+    }, [currentView, activeLesson]);
 
     const handleDoubtSubmit = async () => {
         if (!doubtDescription.trim()) return;
@@ -457,109 +743,98 @@ const UserCourseDetails = () => {
                         >
                             {isAuthenticated ? (
                                 <>
-                                    <video
-                                        ref={videoRef}
-                                        disablePictureInPicture
-                                        disableRemotePlayback
-                                        onContextMenu={(e) => e.preventDefault()}
-                                        className="w-full h-full object-contain pointer-events-auto"
-                                        poster={activeLesson.thumbnail || course.thumbnail}
-                                        autoPlay
-                                        style={{ userSelect: 'none' }}
-                                        onTimeUpdate={() => setCurrentTime(videoRef.current.currentTime)}
-                                        onLoadedMetadata={() => setDuration(videoRef.current.duration)}
-                                        onPlay={() => setIsPlaying(true)}
-                                        onPause={() => setIsPlaying(false)}
-                                        onWaiting={() => setIsBuffering(true)}
-                                        onPlaying={() => setIsBuffering(false)}
-                                    >
-                                        Your browser does not support the video tag.
-                                    </video>
-
-                                    {/* 🛡️ TRANSPARENT SHIELD - Catch interactions and blockSniffers */}
+                                    {/* 🛡️ Level 5 Protection: Shadow DOM Container */}
                                     <div
-                                        className="absolute inset-x-0 top-0 bottom-20 z-[1] bg-transparent cursor-default pointer-events-auto"
-                                        onContextMenu={(e) => e.preventDefault()}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            togglePlay();
-                                        }}
-                                        title=""
-                                    />
-
-                                    {/* 🛡️ KEYBOARD SHORTCUTS HANDLER */}
-                                    <div
-                                        tabIndex="0"
-                                        className="absolute inset-0 focus:outline-none pointer-events-none z-[2]"
-                                        onKeyDown={(e) => {
-                                            if (!videoRef.current) return;
-                                            if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
-                                            if (e.key === ' ' || e.key === 'k') togglePlay();
-                                            if (e.key === 'ArrowRight' || e.key === 'l') videoRef.current.currentTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 10);
-                                            if (e.key === 'ArrowLeft' || e.key === 'j') videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10);
-                                            if (e.key === 'f') {
-                                                const container = videoRef.current.parentElement;
-                                                if (document.fullscreenElement) document.exitFullscreen();
-                                                else container.requestFullscreen();
-                                            }
-                                        }}
-                                    />
-
-                                    {/* 🛡️ BUFFERING OVERLAY */}
-                                    {isBuffering && (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none z-[8]">
-                                            <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
-                                        </div>
-                                    )}
-
-                                    {/* 🛡️ CUSTOM CONTROL BAR */}
-                                    <div
-                                        className={`absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-[20] transition-opacity duration-300 ${showControls || !isPlaying ? 'opacity-100' : 'opacity-0'}`}
+                                        ref={playerContainerRef}
+                                        className="w-full h-full relative group"
                                         onMouseMove={handleMouseMove}
                                     >
-                                        <div className="relative mb-4">
-                                            <input
-                                                type="range"
-                                                min="0"
-                                                max={duration || 0}
-                                                value={currentTime}
-                                                onChange={handleProgress}
-                                                className="w-full h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-blue-600 hover:h-2 transition-all"
-                                            />
-                                        </div>
+                                        {/* Video render will be handled via ref and HLS.js */}
+                                        <video
+                                            ref={videoRef}
+                                            disablePictureInPicture
+                                            disableRemotePlayback
+                                            onContextMenu={(e) => e.preventDefault()}
+                                            className="w-full h-full object-contain pointer-events-auto"
+                                            poster={activeLesson.thumbnail || course.thumbnail}
+                                            autoPlay
+                                            style={{ userSelect: 'none', backgroundColor: 'black' }}
+                                            onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
+                                            onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
+                                            onPlay={() => setIsPlaying(true)}
+                                            onPause={() => setIsPlaying(false)}
+                                            onWaiting={() => setIsBuffering(true)}
+                                            onPlaying={() => setIsBuffering(false)}
+                                        >
+                                            Your browser does not support the video tag.
+                                        </video>
 
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-6">
-                                                <button onClick={togglePlay} className="text-white hover:text-blue-400 transition text-xl">
-                                                    {isPlaying ? '⏸' : '▶'}
-                                                </button>
-                                                <div className="text-white text-xs font-mono">
-                                                    {formatTime(currentTime)} / {formatTime(duration)}
-                                                </div>
+                                        {/* 🛡️ TRANSPARENT SHIELD - Obfuscated layer */}
+                                        <div
+                                            className="absolute inset-0 z-[1] bg-transparent cursor-default pointer-events-auto"
+                                            onContextMenu={(e) => e.preventDefault()}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                togglePlay();
+                                            }}
+                                        />
+
+                                        {/* 🛡️ BUFFERING OVERLAY */}
+                                        {isBuffering && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none z-[8]">
+                                                <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
                                             </div>
-                                            <button
-                                                onClick={() => {
-                                                    const container = videoRef.current.parentElement;
-                                                    if (document.fullscreenElement) document.exitFullscreen();
-                                                    else container.requestFullscreen();
-                                                }}
-                                                className="text-white hover:text-blue-400 transition text-xl"
-                                            >
-                                                ⛶
-                                            </button>
-                                        </div>
-                                    </div>
+                                        )}
 
-                                    {/* 🛡️ MOVING WATERMARK - Prevents useful screen recording */}
-                                    <div
-                                        className="absolute bg-white/10 backdrop-blur-sm text-white/40 px-3 py-1 rounded-full text-[10px] md:text-xs font-mono pointer-events-none select-none z-[10] transition-all duration-1000 ease-in-out border border-white/5"
-                                        style={{
-                                            top: watermarkPos.top,
-                                            left: watermarkPos.left,
-                                            userSelect: 'none'
-                                        }}
-                                    >
-                                        HigherPolynomial • Protected Content • {new Date().toLocaleDateString()}
+                                        {/* 🛡️ OBFUSCATED CONTROL BAR */}
+                                        <div
+                                            className={`absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-[20] transition-opacity duration-300 ${showControls || !isPlaying ? 'opacity-100' : 'opacity-0'}`}
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <div className="relative mb-4">
+                                                <input
+                                                    type="range"
+                                                    min="0"
+                                                    max={duration || 0}
+                                                    value={currentTime}
+                                                    onChange={handleProgress}
+                                                    className="w-full h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-blue-600 hover:h-2 transition-all"
+                                                />
+                                            </div>
+
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-6">
+                                                    <button onClick={togglePlay} className="text-white hover:text-blue-400 transition text-xl">
+                                                        {isPlaying ? '⏸' : '▶'}
+                                                    </button>
+                                                    <div className="text-white text-xs font-mono">
+                                                        {formatTime(currentTime)} / {formatTime(duration)}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        const container = videoRef.current.parentElement;
+                                                        if (document.fullscreenElement) document.exitFullscreen();
+                                                        else container.requestFullscreen();
+                                                    }}
+                                                    className="text-white hover:text-blue-400 transition text-xl"
+                                                >
+                                                    ⛶
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* 🛡️ MOVING WATERMARK */}
+                                        <div
+                                            className="absolute bg-white/10 backdrop-blur-sm text-white/40 px-3 py-1 rounded-full text-[10px] md:text-xs font-mono pointer-events-none select-none z-[10] transition-all duration-1000 ease-in-out border border-white/5"
+                                            style={{
+                                                top: watermarkPos.top,
+                                                left: watermarkPos.left,
+                                                userSelect: 'none'
+                                            }}
+                                        >
+                                            HigherPolynomial • Protected Content • {new Date().toLocaleDateString()}
+                                        </div>
                                     </div>
 
                                     {/* 🛡️ INVISIBLE LOGO OVERLAY - Deterrent */}
