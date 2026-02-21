@@ -43,12 +43,13 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20">
 
-          {/* Left: Logo */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center group">
-              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200 group-hover:rotate-6 transition-transform text-white font-bold text-xl font-mono">
-                HP
-              </div>
+              <img
+                src="/logo.png"
+                alt="HigherPolynomial"
+                className="h-12 w-auto object-contain hover:scale-105 transition-transform duration-300"
+              />
               <span className="ml-3 text-2xl font-black text-gray-900 tracking-tight">
                 Higher<span className="text-blue-600">Polynomial</span>
               </span>

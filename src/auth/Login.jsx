@@ -84,8 +84,12 @@ const Login = () => {
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2rem] p-8 shadow-2xl">
           {/* Logo/Header */}
           <div className="text-center mb-10">
-            <div className="inline-flex w-16 h-16 bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl items-center justify-center shadow-lg shadow-blue-500/30 mb-4 rotate-3">
-              <span className="text-white text-3xl font-black italic">Q</span>
+            <div className="inline-flex mb-4">
+              <img
+                src="/logo.png"
+                alt="Logo"
+                className="h-20 w-auto object-contain drop-shadow-2xl"
+              />
             </div>
             <h1 className="text-3xl font-black text-white tracking-tight">
               {isForgotPassword ? "Secure Access" : "Welcome Back"}
@@ -228,7 +232,7 @@ const Login = () => {
 
           <div className="mt-8 text-center">
             <p className="text-gray-400 font-medium">
-              New to EduLearn?{" "}
+              New to HigherPolynomia?{" "}
               <Link to="/signup" className="text-blue-400 hover:text-blue-300 font-bold transition-colors underline-offset-4 hover:underline">
                 Create Account
               </Link>

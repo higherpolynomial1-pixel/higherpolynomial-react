@@ -69,14 +69,18 @@ const Signup = () => {
                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-10 shadow-2xl">
                     {/* Header */}
                     <div className="text-center mb-10">
-                        <div className="inline-flex w-16 h-16 bg-blue-600 rounded-2xl items-center justify-center shadow-lg shadow-blue-500/30 mb-4 -rotate-3">
-                            <span className="text-white text-3xl font-black italic">Q</span>
+                        <div className="inline-flex mb-4">
+                            <img
+                                src="/logo.png"
+                                alt="Logo"
+                                className="h-20 w-auto object-contain drop-shadow-2xl"
+                            />
                         </div>
                         <h1 className="text-3xl font-black text-white tracking-tight">
                             {isOtpSent ? "Email Verification" : "Create Account"}
                         </h1>
                         <p className="text-gray-400 mt-2 font-medium">
-                            {isOtpSent ? `Enter the 6-digit code sent to ${formData.email}` : "Join EduLearn to start your learning journey"}
+                            {isOtpSent ? `Enter the 6-digit code sent to ${formData.email}` : "Join HigherPolynomia to start your learning journey"}
                         </p>
                     </div>
 

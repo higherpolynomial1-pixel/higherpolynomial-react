@@ -280,10 +280,6 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* 9. Footer Tagline */}
-            <footer className="py-12 border-t border-gray-100 text-center">
-                <p className="text-gray-400 font-bold uppercase tracking-[0.3em] font-mono">HigherPolynomia — Knowledge, Elevated.</p>
-            </footer>
         </div>
     );
 };
