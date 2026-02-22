@@ -156,10 +156,15 @@ const Dashboard = () => {
                       <BookOpen size={64} />
                     </div>
                   )}
-                  <div className="absolute top-4 left-4">
+                  <div className="absolute top-4 left-4 flex flex-col gap-2">
                     <span className="bg-white/90 backdrop-blur-md text-gray-900 px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-tight shadow-sm">
                       {course.category || 'General'}
                     </span>
+                    {course.hasQuizzes && (
+                      <span className="bg-orange-600/90 backdrop-blur-md text-white px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tight shadow-sm flex items-center gap-1">
+                        <BookOpen size={10} /> Quizzes Included
+                      </span>
+                    )}
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
                     <button className="w-full bg-blue-600 text-white font-bold py-3 rounded-2xl shadow-xl flex items-center justify-center gap-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">

@@ -49,8 +49,8 @@ const AvailabilitySlotSelector = ({ courseId, onSelect }) => {
                         key={slot.id}
                         onClick={() => handleSelect(slot.id)}
                         className={`p-3 rounded-lg border cursor-pointer transition-all ${isSelected
-                                ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500'
-                                : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-sm'
+                            ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500'
+                            : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-sm'
                             }`}
                     >
                         <div className="flex items-center gap-2 mb-1">

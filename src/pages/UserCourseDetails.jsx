@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { PlayCircle, FileText, ArrowLeft, BookOpen, Clock, Download, ChevronDown, ChevronRight, List } from 'lucide-react';
+import { PlayCircle, FileText, ArrowLeft, BookOpen, Clock, Download, ChevronDown, ChevronRight, List, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { AuthContext } from '../auth/AuthContext';
 import AvailabilitySlotSelector from '../components/AvailabilitySlotSelector';
 
@@ -23,7 +23,11 @@ const UserCourseDetails = () => {
     const [selectedSlotId, setSelectedSlotId] = useState(null);
     const [isSubmittingDoubt, setIsSubmittingDoubt] = useState(false);
     const [watermarkPos, setWatermarkPos] = useState({ top: '10%', left: '10%' });
+    const [isQuizOpen, setIsQuizOpen] = useState(false);
+    const [isQuizPassed, setIsQuizPassed] = useState(false);
+    const [isCheckingQuiz, setIsCheckingQuiz] = useState(false);
     const videoRef = React.useRef(null);
+
 
     // 🛡️ Enhanced Security State
     const [devToolsOpen, setDevToolsOpen] = useState(false);
@@ -65,6 +69,30 @@ const UserCourseDetails = () => {
         clearTimeout(controlsTimeout);
         controlsTimeout = setTimeout(() => setShowControls(false), 3000);
     };
+
+    // 🛡️ Quiz Completion Check
+    useEffect(() => {
+        const checkQuizStatus = async () => {
+            if (activeLesson?.hasQuiz && user?.id) {
+                setIsCheckingQuiz(true);
+                try {
+                    const response = await fetch(`https://higherpolynomial-node.vercel.app/api/users/${user.id}/videos/${activeLesson.id}/progress`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setIsQuizPassed(data.isCompleted);
+                    }
+                } catch (error) {
+                    console.error("Error checking quiz status:", error);
+                } finally {
+                    setIsCheckingQuiz(false);
+                }
+            } else {
+                setIsQuizPassed(false);
+            }
+        };
+
+        checkQuizStatus();
+    }, [activeLesson, user]);
 
     // 🛡️ Dynamic Watermark Movement
     useEffect(() => {
@@ -723,6 +751,11 @@ const UserCourseDetails = () => {
                                                         <FileText size={12} /> Notes Included
                                                     </span>
                                                 )}
+                                                {video.hasQuiz && (
+                                                    <span className="flex items-center gap-1 text-xs text-orange-500 font-bold uppercase tracking-tight bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100">
+                                                        <BookOpen size={10} /> Quiz Added
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                         <ChevronRight className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
@@ -765,6 +798,11 @@ const UserCourseDetails = () => {
                                             onPause={() => setIsPlaying(false)}
                                             onWaiting={() => setIsBuffering(true)}
                                             onPlaying={() => setIsBuffering(false)}
+                                            onEnded={() => {
+                                                if (activeLesson?.hasQuiz && !isQuizPassed) {
+                                                    setIsQuizOpen(true);
+                                                }
+                                            }}
                                         >
                                             Your browser does not support the video tag.
                                         </video>
@@ -896,6 +934,16 @@ const UserCourseDetails = () => {
                                             <Download size={20} /> Download PDF Notes
                                         </a>
                                     )}
+                                    {activeLesson.hasQuiz && (
+                                        <button
+                                            onClick={() => setIsQuizOpen(true)}
+                                            className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition shadow-lg ${isQuizPassed
+                                                ? 'bg-green-100 text-green-700 border border-green-200'
+                                                : 'bg-orange-600 text-white hover:bg-orange-700 shadow-orange-200'}`}
+                                        >
+                                            <BookOpen size={20} /> {isQuizPassed ? 'Quiz Passed ✓' : 'Start Lesson Quiz'}
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => setCurrentView('playlist')}
                                         className="w-full flex items-center justify-center gap-2 border-2 border-gray-100 text-gray-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-50 transition"
@@ -911,6 +959,7 @@ const UserCourseDetails = () => {
                                     const currentIndex = selectedPlaylist.videos.findIndex(v => v.id === activeLesson.id);
                                     const prevVideo = selectedPlaylist.videos[currentIndex - 1];
                                     const nextVideo = selectedPlaylist.videos[currentIndex + 1];
+                                    const isLocked = activeLesson.hasQuiz && !isQuizPassed;
 
                                     return (
                                         <>
@@ -927,25 +976,258 @@ const UserCourseDetails = () => {
                                             ) : <div />}
 
                                             {nextVideo ? (
-                                                <button
-                                                    onClick={() => setActiveLesson(nextVideo)}
-                                                    className="flex flex-col items-end gap-1 p-3 rounded-xl hover:bg-gray-50 transition border border-transparent hover:border-gray-100"
-                                                >
-                                                    <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Next</span>
-                                                    <span className="font-bold text-gray-900 flex items-center gap-1 group">
-                                                        {nextVideo.title} <ArrowLeft size={16} className="rotate-180 group-hover:translate-x-1 transition-transform" />
-                                                    </span>
-                                                </button>
+                                                <div className="relative group/next">
+                                                    <button
+                                                        onClick={() => !isLocked && setActiveLesson(nextVideo)}
+                                                        disabled={isLocked}
+                                                        className={`flex flex-col items-end gap-1 p-3 rounded-xl transition border border-transparent ${isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 hover:border-gray-100'}`}
+                                                    >
+                                                        <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Next</span>
+                                                        <span className="font-bold text-gray-900 flex items-center gap-1 group">
+                                                            {nextVideo.title} <ArrowLeft size={16} className="rotate-180 group-hover:translate-x-1 transition-transform" />
+                                                        </span>
+                                                    </button>
+                                                    {isLocked && (
+                                                        <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-gray-900 text-white text-[10px] rounded shadowing-xl opacity-0 group-hover/next:opacity-100 transition-opacity pointer-events-none text-center">
+                                                            Pass the quiz to unlock the next lesson 🔒
+                                                        </div>
+                                                    )}
+                                                </div>
                                             ) : <div />}
                                         </>
                                     );
                                 })()}
                             </div>
+
                         </div>
                     </div>
                 )}
             </main>
+
+            {isQuizOpen && (
+                <QuizPlayer
+                    videoId={activeLesson?.id}
+                    userId={user?.id}
+                    onClose={() => setIsQuizOpen(false)}
+                    onPassed={() => {
+                        setIsQuizPassed(true);
+                        setIsQuizOpen(false);
+                        toast.success("Congratulations! You've passed the quiz and unlocked the next lesson.");
+                    }}
+                />
+            )}
         </div >
+    );
+};
+
+// --- Quiz Player Component ---
+const QuizPlayer = ({ videoId, userId, onClose, onPassed }) => {
+    const [quiz, setQuiz] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [answers, setAnswers] = useState({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [result, setResult] = useState(null); // { score, isPassed, results: [] }
+
+    useEffect(() => {
+        fetchQuiz();
+    }, [videoId]);
+
+    const fetchQuiz = async () => {
+        try {
+            const response = await fetch(`https://higherpolynomial-node.vercel.app/api/videos/${videoId}/quiz`);
+            if (response.ok) {
+                const data = await response.json();
+                setQuiz(data);
+            }
+        } catch (error) {
+            console.error("Error fetching quiz:", error);
+            toast.error("Failed to load quiz content");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleOptionSelect = (questionId, option) => {
+        if (result) return; // Prevent change after submission
+        setAnswers(prev => ({ ...prev, [questionId]: option }));
+    };
+
+    const handleSubmit = async () => {
+        if (Object.keys(answers).length < quiz.questions.length) {
+            return toast.warning("Please answer all questions before submitting");
+        }
+
+        setIsSubmitting(true);
+        try {
+            const response = await fetch('https://higherpolynomial-node.vercel.app/api/quizzes/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    quizId: quiz.id,
+                    userId,
+                    answers
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setResult(data);
+                if (data.isPassed) {
+                    onPassed();
+                }
+            } else {
+                throw new Error("Submission failed");
+            }
+        } catch (error) {
+            console.error("Error submitting quiz:", error);
+            toast.error("Failed to submit quiz");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    if (loading) return null;
+    if (!quiz) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+                {/* Header */}
+                <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                    <div>
+                        <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Lesson Quiz</h3>
+                        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">{quiz.title}</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                        <X size={24} className="text-gray-400" />
+                    </button>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-8 space-y-12">
+                    {result ? (
+                        /* Results View */
+                        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className={`p-8 rounded-3xl text-center space-y-4 ${result.isPassed ? 'bg-green-50 border border-green-100' : 'bg-red-50 border border-red-100'}`}>
+                                <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center mb-4">
+                                    {result.isPassed ? (
+                                        <CheckCircle size={80} className="text-green-500" />
+                                    ) : (
+                                        <AlertCircle size={80} className="text-red-500" />
+                                    )}
+                                </div>
+                                <h4 className={`text-3xl font-black uppercase ${result.isPassed ? 'text-green-900' : 'text-red-900'}`}>
+                                    {result.isPassed ? 'Lesson Mastered!' : 'Not Quite There...'}
+                                </h4>
+                                <div className="flex justify-center gap-8">
+                                    <div className="text-center">
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Your Score</p>
+                                        <p className={`text-4xl font-black ${result.isPassed ? 'text-green-600' : 'text-red-600'}`}>{result.score}%</p>
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Correct</p>
+                                        <p className="text-4xl font-black text-gray-900">{result.correctCount}/{result.totalCount}</p>
+                                    </div>
+                                </div>
+                                {!result.isPassed && (
+                                    <p className="text-red-600/70 text-sm font-medium">You need at least 70% to unlock the next lesson. Review the video and try again!</p>
+                                )}
+                            </div>
+
+                            <div className="space-y-6">
+                                <h5 className="font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
+                                    <List size={20} className="text-blue-600" /> Review Questions
+                                </h5>
+                                {quiz.questions.map((q, idx) => {
+                                    const userAns = answers[q.id];
+                                    const isCorrect = userAns === q.correctOption;
+                                    return (
+                                        <div key={q.id} className={`p-6 rounded-2xl border ${isCorrect ? 'border-green-100 bg-green-50/30' : 'border-red-100 bg-red-50/30'}`}>
+                                            <p className="font-bold text-gray-900 mb-4">{idx + 1}. {q.questionText}</p>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                {['A', 'B', 'C', 'D'].map(opt => {
+                                                    const isSelected = userAns === opt;
+                                                    const isCorrectOpt = q.correctOption === opt;
+                                                    let classes = "px-4 py-2 rounded-xl text-sm font-medium border transition-colors ";
+
+                                                    if (isCorrectOpt) classes += "bg-green-500 text-white border-green-600 shadow-sm";
+                                                    else if (isSelected && !isCorrect) classes += "bg-red-500 text-white border-red-600 shadow-sm";
+                                                    else classes += "bg-white text-gray-500 border-gray-100 opacity-50";
+
+                                                    return (
+                                                        <div key={opt} className={classes}>
+                                                            {opt}. {q[`option${opt}`]}
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    ) : (
+                        /* Quiz View */
+                        quiz.questions.map((q, idx) => (
+                            <div key={q.id} className="space-y-6 animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${idx * 100}ms` }}>
+                                <div className="flex items-start gap-4">
+                                    <span className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs flex-shrink-0 mt-1 shadow-lg shadow-blue-200">
+                                        {idx + 1}
+                                    </span>
+                                    <p className="text-xl font-bold text-gray-900 leading-tight">{q.questionText}</p>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-12">
+                                    {['A', 'B', 'C', 'D'].map(opt => (
+                                        <button
+                                            key={opt}
+                                            onClick={() => handleOptionSelect(q.id, opt)}
+                                            className={`p-4 rounded-2xl text-left font-bold transition-all border-2 group ${answers[q.id] === opt
+                                                ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-lg shadow-blue-100'
+                                                : 'border-gray-100 bg-white text-gray-600 hover:border-blue-200 hover:bg-gray-50'}`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-colors ${answers[q.id] === opt ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-600'}`}>
+                                                    {opt}
+                                                </span>
+                                                {q[`option${opt}`]}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="p-8 border-t border-gray-100 bg-gray-50/50 flex gap-4">
+                    {result ? (
+                        <button
+                            onClick={onClose}
+                            className={`flex-1 py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl transition-all ${result.isPassed ? 'bg-green-600 text-white hover:bg-green-700 shadow-green-200' : 'bg-gray-900 text-white hover:bg-black shadow-gray-200'}`}
+                        >
+                            {result.isPassed ? 'Continue Learning' : 'Dismiss'}
+                        </button>
+                    ) : (
+                        <>
+                            <button
+                                onClick={onClose}
+                                className="px-8 py-4 text-gray-500 font-bold hover:bg-gray-200 rounded-2xl transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSubmit}
+                                disabled={isSubmitting}
+                                className="flex-1 py-4 bg-blue-600 text-white font-black uppercase tracking-widest rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 disabled:bg-gray-300 disabled:shadow-none"
+                            >
+                                {isSubmitting ? 'Verifying...' : 'Submit Answers'}
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
     );
 };
 

@@ -107,8 +107,8 @@ const UsersPage = () => {
                                                         <button
                                                             onClick={() => handleToggleCourseBlock(user, course)}
                                                             className={`ml-2 px-2 py-0.5 rounded text-[10px] uppercase font-bold ${course.status === 'blocked'
-                                                                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                                    : 'bg-red-100 text-red-700 hover:bg-red-200'
+                                                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                                : 'bg-red-100 text-red-700 hover:bg-red-200'
                                                                 }`}
                                                         >
                                                             {course.status === 'blocked' ? 'Unblock' : 'Block'}
@@ -136,8 +136,8 @@ const UsersPage = () => {
                                                 onClick={() => handleToggleBlockUser(user)}
                                                 title={user.is_blocked ? "Unblock User" : "Block User"}
                                                 className={`p-2 rounded-lg transition ${user.is_blocked
-                                                        ? 'bg-green-50 text-green-600 hover:bg-green-100'
-                                                        : 'bg-orange-50 text-orange-600 hover:bg-orange-100'
+                                                    ? 'bg-green-50 text-green-600 hover:bg-green-100'
+                                                    : 'bg-orange-50 text-orange-600 hover:bg-orange-100'
                                                     }`}
                                             >
                                                 {user.is_blocked ? <Shield size={18} /> : <ShieldOff size={18} />}

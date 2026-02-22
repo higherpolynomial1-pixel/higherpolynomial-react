@@ -116,6 +116,12 @@ export default function AdminDashboard() {
                 >
                   Doubt Sessions
                 </button>
+                <button
+                  onClick={() => navigate('quiz-manager')}
+                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition shadow-md hover:shadow-lg"
+                >
+                  Create Quiz
+                </button>
               </div>
             </div>
           </div>
@@ -131,6 +137,7 @@ export default function AdminDashboard() {
             <Route path="playlists/:id" element={<ManagePlaylistsPage />} />
             <Route path="preview/:id" element={<CoursePreviewPage />} />
             <Route path="doubt-sessions" element={<DoubtSessionsPage />} />
+            <Route path="quiz-manager" element={<QuizManagerPage />} />
           </Routes>
         </main>
       </div>
@@ -740,6 +747,9 @@ function ManagePlaylistsPage() {
   });
   const [uploadProgress, setUploadProgress] = useState({});
   const [loading, setLoading] = useState(true);
+  const [quizVideoId, setQuizVideoId] = useState(null);
+  const [isQuizModalOpen, setIsQuizModalOpen] = useState(false);
+
 
   useEffect(() => {
     if (courseId) {
@@ -1289,13 +1299,21 @@ function ManagePlaylistsPage() {
                                       HLS Failed
                                     </span>
                                   )}
+                                  {vid.hasQuiz && (
+                                    <span className="px-1.5 py-0.5 text-[10px] bg-orange-100 text-orange-700 rounded-full border border-orange-200 font-bold uppercase tracking-tight flex items-center gap-1">
+                                      <BookOpen size={10} /> Quiz Added
+                                    </span>
+                                  )}
+
                                 </div>
+
                                 <p className="text-xs text-gray-500">{vid.duration || '00:00'}</p>
                               </div>
                             </div>
                             <div className="flex gap-1">
                               <button
                                 onClick={() => setPreviewVideo(vid)}
+
                                 className="p-1.5 text-blue-600 hover:bg-blue-100 rounded"
                                 title="Preview Video"
                               >
@@ -1381,9 +1399,440 @@ function ManagePlaylistsPage() {
           Preview Course
         </button>
       </div>
+
+      {isQuizModalOpen && (
+        <QuizAdminModal
+          videoId={quizVideoId}
+          onClose={() => {
+            setIsQuizModalOpen(false);
+            setQuizVideoId(null);
+            fetchPlaylists(); // Refresh to update badge
+          }}
+        />
+      )}
     </div>
   );
 }
+
+function QuizManagerPage() {
+  const { courses: coursesObj, loading: coursesLoading } = useCourses();
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [playlists, setPlaylists] = useState([]);
+  const [loadingPlaylists, setLoadingPlaylists] = useState(false);
+  const [selectedPlaylist, setSelectedPlaylist] = useState(null);
+  const [quizVideoId, setQuizVideoId] = useState(null);
+  const [isQuizModalOpen, setIsQuizModalOpen] = useState(false);
+
+  const courses = Object.values(coursesObj).filter(c => c.status === 'published');
+
+  const handleSelectCourse = async (course) => {
+    setSelectedCourse(course);
+    setSelectedPlaylist(null);
+    setLoadingPlaylists(true);
+    try {
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/courses/${course.id}/playlists`);
+      if (response.ok) {
+        const data = await response.json();
+        setPlaylists(data.playlists || []);
+      }
+    } catch (error) {
+      console.error("Error fetching playlists:", error);
+    } finally {
+      setLoadingPlaylists(false);
+    }
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto pb-20">
+      <div className="mb-8 overflow-hidden rounded-3xl bg-white shadow-xl shadow-purple-100 border border-purple-50">
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-700 p-8 text-white">
+          <h2 className="text-3xl font-black uppercase tracking-tight">Global Quiz Manager</h2>
+          <p className="mt-2 text-purple-100 opacity-90 font-medium">Create and manage assessment quizzes for any video in your active courses.</p>
+        </div>
+
+        <div className="p-8">
+          {/* Breadcrumbs for navigation */}
+          <div className="flex items-center gap-2 mb-8 text-sm font-bold uppercase tracking-wider">
+            <button
+              onClick={() => { setSelectedCourse(null); setSelectedPlaylist(null); }}
+              className={`px-3 py-1 rounded-full transition ${!selectedCourse ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+            >
+              1. Select Course
+            </button>
+            <span className="text-gray-300">/</span>
+            <button
+              disabled={!selectedCourse}
+              onClick={() => setSelectedPlaylist(null)}
+              className={`px-3 py-1 rounded-full transition ${selectedCourse && !selectedPlaylist ? 'bg-purple-600 text-white' : selectedCourse ? 'bg-gray-100 text-gray-500 hover:bg-gray-200' : 'bg-transparent text-gray-300'}`}
+            >
+              2. Select Playlist
+            </button>
+            <span className="text-gray-300">/</span>
+            <div
+              className={`px-3 py-1 rounded-full transition ${selectedPlaylist ? 'bg-purple-600 text-white' : 'bg-transparent text-gray-300'}`}
+            >
+              3. Manage Video Quizzes
+            </div>
+          </div>
+
+          {!selectedCourse && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-500">
+              {courses.map(course => (
+                <div
+                  key={course.id}
+                  onClick={() => handleSelectCourse(course)}
+                  className="group cursor-pointer bg-white border border-gray-100 rounded-3xl p-6 shadow-md hover:shadow-2xl transition-all hover:scale-[1.02] relative overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-purple-50 rounded-full -translate-y-12 translate-x-12 group-hover:bg-purple-100 transition-colors"></div>
+                  <div className="relative z-10">
+                    <h4 className="text-xl font-black text-gray-800 mb-2 truncate">{course.title}</h4>
+                    <p className="text-sm text-gray-500 line-clamp-2 mb-4 h-10">{course.description}</p>
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                      <span className="text-xs font-black uppercase text-purple-600">Active Course</span>
+                      <Plus size={20} className="text-purple-600 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {courses.length === 0 && (
+                <div className="col-span-full py-20 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+                  <BookOpen size={48} className="mx-auto text-gray-300 mb-4" />
+                  <p className="text-gray-500 font-bold">No active courses found. Please publish a course first.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {selectedCourse && !selectedPlaylist && (
+            <div className="space-y-4 animate-in fade-in duration-300">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-black text-gray-800">{selectedCourse.title}</h3>
+                <button onClick={() => setSelectedCourse(null)} className="text-xs font-bold text-gray-500 hover:text-purple-600">Change Course</button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {loadingPlaylists ? (
+                  <div className="col-span-full py-12 text-center italic text-gray-400">Loading playlists...</div>
+                ) : (
+                  playlists.map(playlist => (
+                    <div
+                      key={playlist.id}
+                      onClick={() => setSelectedPlaylist(playlist)}
+                      className="p-6 bg-gray-50 border border-gray-100 rounded-2xl hover:bg-white hover:shadow-xl transition-all cursor-pointer group flex items-center justify-between"
+                    >
+                      <div>
+                        <h5 className="font-black text-gray-800 group-hover:text-purple-600 transition-colors uppercase tracking-tight">{playlist.title}</h5>
+                        <p className="text-xs text-gray-500 mt-1">{playlist.videos?.length || 0} Videos available</p>
+                      </div>
+                      <Plus size={20} className="text-purple-300 group-hover:text-purple-600 transition-colors" />
+                    </div>
+                  ))
+                )}
+                {!loadingPlaylists && playlists.length === 0 && (
+                  <div className="col-span-full py-12 text-center text-gray-400">No playlists found for this course.</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {selectedPlaylist && (
+            <div className="animate-in slide-in-from-right-4 duration-300">
+              <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-4">
+                <div>
+                  <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight">{selectedPlaylist.title}</h3>
+                  <p className="text-xs text-purple-600 font-bold uppercase mt-1">Course: {selectedCourse.title}</p>
+                </div>
+                <button onClick={() => setSelectedPlaylist(null)} className="text-xs font-bold text-gray-500 hover:text-purple-600">Back to Playlists</button>
+              </div>
+
+              <div className="space-y-3">
+                {selectedPlaylist.videos?.map((video, idx) => (
+                  <div key={video.id} className="flex items-center justify-between p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center text-purple-600 font-black">
+                        {idx + 1}
+                      </div>
+                      <div>
+                        <h6 className="font-bold text-gray-900 line-clamp-1">{video.title}</h6>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] font-black uppercase text-gray-400 px-1.5 py-0.5 border rounded">ID: {video.id}</span>
+                          {video.hasQuiz && (
+                            <span className="text-[10px] font-black uppercase bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                              <BookOpen size={10} /> Quiz Exists
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setQuizVideoId(video.id);
+                        setIsQuizModalOpen(true);
+                      }}
+                      className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${video.hasQuiz
+                        ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                        : 'bg-purple-600 text-white hover:bg-purple-700 shadow-lg shadow-purple-100'
+                        }`}
+                    >
+                      {video.hasQuiz ? 'Edit Quiz' : 'Create Quiz'}
+                    </button>
+                  </div>
+                ))}
+                {(!selectedPlaylist.videos || selectedPlaylist.videos.length === 0) && (
+                  <div className="py-20 text-center text-gray-400 italic">This playlist doesn't have any videos yet.</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {isQuizModalOpen && (
+        <QuizAdminModal
+          videoId={quizVideoId}
+          onClose={() => {
+            setIsQuizModalOpen(false);
+            setQuizVideoId(null);
+            if (selectedCourse) handleSelectCourse(selectedCourse);
+          }}
+          onDelete={() => {
+            setIsQuizModalOpen(false);
+            setQuizVideoId(null);
+            if (selectedCourse) handleSelectCourse(selectedCourse);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function QuizAdminModal({ videoId, onClose, onDelete }) {
+  const [loading, setLoading] = useState(true);
+  const [quizId, setQuizId] = useState(null);
+  const [title, setTitle] = useState('');
+  const [questions, setQuestions] = useState([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (videoId) {
+      fetchQuiz();
+    }
+  }, [videoId]);
+
+  const fetchQuiz = async () => {
+    try {
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/videos/${videoId}/quiz`);
+      if (response.ok) {
+        const data = await response.json();
+        setQuizId(data.id);
+        setTitle(data.title || '');
+        setQuestions(data.questions || []);
+      } else {
+        // No quiz yet, start with one empty question
+        setQuestions([{
+          questionText: '',
+          optionA: '',
+          optionB: '',
+          optionC: '',
+          optionD: '',
+          correctOption: 'A'
+        }]);
+      }
+    } catch (error) {
+      console.error("Error fetching quiz:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddQuestion = () => {
+    setQuestions([...questions, {
+      questionText: '',
+      optionA: '',
+      optionB: '',
+      optionC: '',
+      optionD: '',
+      correctOption: 'A'
+    }]);
+  };
+
+  const handleRemoveQuestion = (index) => {
+    setQuestions(questions.filter((_, i) => i !== index));
+  };
+
+  const updateQuestion = (index, field, value) => {
+    const newQuestions = [...questions];
+    newQuestions[index][field] = value;
+    setQuestions(newQuestions);
+  };
+
+  const handleSave = async () => {
+    if (!title.trim()) return toast.warning("Quiz title is required");
+    if (questions.length === 0) return toast.warning("Add at least one question");
+
+    // Basic validation
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      if (!q.questionText.trim() || !q.optionA.trim() || !q.optionB.trim()) {
+        return toast.warning(`Question ${i + 1} is incomplete`);
+      }
+    }
+
+    setIsSaving(true);
+    try {
+      const response = await fetch('https://higherpolynomial-node.vercel.app/api/quizzes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoId, title, questions })
+      });
+
+      if (response.ok) {
+        toast.success("Quiz saved successfully!");
+        onClose();
+      } else {
+        throw new Error("Failed to save quiz");
+      }
+    } catch (error) {
+      toast.error("Error saving quiz");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Are you sure you want to delete this quiz? This action cannot be undone.")) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/quizzes/${quizId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        toast.success("Quiz deleted successfully");
+        onDelete();
+      } else {
+        throw new Error("Failed to delete quiz");
+      }
+    } catch (error) {
+      console.error("Delete Error:", error);
+      toast.error("Error deleting quiz");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  if (loading) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Management System: Quiz</h3>
+          <div className="flex items-center gap-2">
+            {quizId && (
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="p-2.5 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                title="Delete Entire Quiz"
+              >
+                <Trash2 size={24} />
+              </button>
+            )}
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><Plus className="rotate-45" size={24} /></button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+          <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+            <label className="block text-xs font-black uppercase text-gray-400 mb-2">Configure Quiz Header</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none transition-all font-bold text-lg"
+              placeholder="e.g., Final Assessment: Android Fundamentals"
+            />
+          </div>
+
+          <div className="space-y-8">
+            {questions.map((q, idx) => (
+              <div key={idx} className="p-8 border border-gray-100 rounded-3xl bg-white shadow-sm hover:shadow-md transition-shadow relative group">
+                <button
+                  onClick={() => handleRemoveQuestion(idx)}
+                  className="absolute top-6 right-6 text-gray-300 hover:text-red-500 transition-colors"
+                >
+                  <Trash2 size={20} />
+                </button>
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="bg-purple-600 text-white text-[10px] font-black px-2 py-1 rounded">Q{idx + 1}</span>
+                      <label className="text-xs font-black uppercase text-gray-500">Question Content</label>
+                    </div>
+                    <textarea
+                      rows="2"
+                      value={q.questionText}
+                      onChange={(e) => updateQuestion(idx, 'questionText', e.target.value)}
+                      className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none transition-all font-medium"
+                      placeholder="What is the result of...?"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {['A', 'B', 'C', 'D'].map((opt) => (
+                      <div
+                        key={opt}
+                        className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer ${q.correctOption === opt ? 'bg-purple-50 border-purple-500' : 'bg-white border-gray-50 hover:border-purple-200'}`}
+                        onClick={() => updateQuestion(idx, 'correctOption', opt)}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black ${q.correctOption === opt ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                          {opt}
+                        </div>
+                        <input
+                          type="text"
+                          value={q[`option${opt}`]}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => updateQuestion(idx, `option${opt}`, e.target.value)}
+                          className="flex-1 bg-transparent border-none outline-none font-bold text-gray-700"
+                          placeholder={`Enter option ${opt}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={handleAddQuestion}
+            className="w-full py-6 border-2 border-dashed border-gray-200 rounded-3xl text-gray-400 font-black uppercase tracking-widest hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50 transition-all flex items-center justify-center gap-3"
+          >
+            <Plus size={24} /> Add New Question
+          </button>
+        </div>
+
+        <div className="flex gap-4 pt-8 border-t mt-8">
+          <button
+            onClick={onClose}
+            className="flex-1 px-8 py-4 text-gray-500 font-black uppercase tracking-widest hover:bg-gray-100 rounded-2xl transition"
+          >
+            Close
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="flex-[2] px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-700 text-white font-black uppercase tracking-widest rounded-2xl hover:from-purple-700 hover:to-indigo-800 transition-all shadow-xl shadow-purple-200 disabled:opacity-50"
+          >
+            {isSaving ? 'Deploying...' : 'Save & Publish Quiz'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 // Course Preview Component (simplified - would need to fetch actual data)
 function CoursePreviewPage() {
