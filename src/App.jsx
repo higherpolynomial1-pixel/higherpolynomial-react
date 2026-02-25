@@ -22,6 +22,7 @@ import Dashboard from "./pages/Dashboard";
 import UserCourseDetails from "./pages/UserCourseDetails";
 import ContactUs from "./pages/ContactUs";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import CareerCounselor from "./pages/CareerCounselor";
 
 const App = () => {
   return (
@@ -39,6 +40,7 @@ const App = () => {
             <Route path="/courses" element={<Layout><Dashboard /></Layout>} />
             <Route path="/course/:id" element={<Layout><UserCourseDetails /></Layout>} />
             <Route path="/contact-us" element={<Layout><ContactUs /></Layout>} />
+            <Route path="/CareerCounselor" element={<Layout><CareerCounselor /></Layout>} />
             <Route path="/privacy" element={<Layout><PrivacyPolicy /></Layout>} />
 
             {/* 3. Protected User Routes */}

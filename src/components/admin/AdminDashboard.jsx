@@ -1,6 +1,6 @@
 import { useState, createContext, useContext, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useParams, Link } from 'react-router-dom';
-import { Upload, Plus, Trash2, Eye, BookOpen, Video, FileText, DollarSign, Tag, User, List, PlayCircle, Calendar, Clock } from 'lucide-react';
+import { Upload, Plus, Trash2, Eye, BookOpen, Video, FileText, DollarSign, Tag, User, List, PlayCircle, Calendar, Clock, Phone, Mail } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 // Context for managing courses globally
@@ -86,7 +86,7 @@ const uploadToS3Directly = async (file, onProgress) => {
 };
 
 // Main Admin Dashboard Component with Nested Routing
-export default function AdminDashboard() {
+function AdminDashboard() {
   const navigate = useNavigate();
 
   return (
@@ -122,6 +122,12 @@ export default function AdminDashboard() {
                 >
                   Create Quiz
                 </button>
+                <button
+                  onClick={() => navigate('counseling-sessions')}
+                  className="px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-black transition shadow-md hover:shadow-lg"
+                >
+                  Counseling
+                </button>
               </div>
             </div>
           </div>
@@ -138,6 +144,7 @@ export default function AdminDashboard() {
             <Route path="preview/:id" element={<CoursePreviewPage />} />
             <Route path="doubt-sessions" element={<DoubtSessionsPage />} />
             <Route path="quiz-manager" element={<QuizManagerPage />} />
+            <Route path="counseling-sessions" element={<CounselingManagerPage />} />
           </Routes>
         </main>
       </div>
@@ -2505,3 +2512,348 @@ function DoubtSessionsPage() {
     </div>
   );
 }
+
+function CounselingManagerPage() {
+  const [sessions, setSessions] = useState([]);
+  const [slots, setSlots] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('requests'); // 'requests' or 'slots'
+
+  // Slot Form State
+  const [newSlot, setNewSlot] = useState({ start_time: '', price: '', service_name: '' });
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Accept Modal State
+  const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [meetLink, setMeetLink] = useState('');
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [sessionsRes, slotsRes] = await Promise.all([
+        fetch('https://higherpolynomial-node.vercel.app/api/counseling/sessions'),
+        fetch('https://higherpolynomial-node.vercel.app/api/counseling/slots/all')
+      ]);
+
+      if (sessionsRes.ok) setSessions(await sessionsRes.json());
+      if (slotsRes.ok) setSlots(await slotsRes.json());
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateSlot = async (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    try {
+      const response = await fetch('https://higherpolynomial-node.vercel.app/api/counseling/slots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSlot)
+      });
+      if (response.ok) {
+        toast.success("Slot created successfully!");
+        setNewSlot({ start_time: '', price: '', service_name: '' });
+        fetchData();
+      }
+    } catch (error) {
+      toast.error("Failed to create slot");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteSlot = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this slot?")) return;
+    try {
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/counseling/slots/${id}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        toast.success("Slot deleted");
+        fetchData();
+      }
+    } catch (error) {
+      toast.error("Failed to delete slot");
+    }
+  };
+
+  const handleAcceptClick = (session) => {
+    setSelectedSession(session);
+    setIsAcceptModalOpen(true);
+  };
+
+  const handleConfirmAccept = async () => {
+    if (!meetLink) return toast.error("Please enter a Google Meet link");
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/counseling/accept/${selectedSession.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meetLink })
+      });
+      if (response.ok) {
+        toast.success("Session accepted!");
+        setIsAcceptModalOpen(false);
+        setMeetLink('');
+        fetchData();
+      }
+    } catch (error) {
+      toast.error("Failed to accept session");
+    }
+  };
+
+  const handleRejectSession = async (id) => {
+    if (!window.confirm("Are you sure you want to reject this request? An email notification will be sent to the user.")) return;
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`https://higherpolynomial-node.vercel.app/api/counseling/reject/${id}`, {
+        method: 'POST'
+      });
+      if (response.ok) {
+        toast.success("Session rejected and email sent");
+        fetchData();
+      } else {
+        toast.error("Failed to reject session");
+      }
+    } catch (error) {
+      toast.error("Error rejecting session");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  if (loading) return <div className="text-center py-12">Loading...</div>;
+
+  return (
+    <div className="max-w-6xl mx-auto pb-20">
+      <div className="mb-8 bg-gradient-to-r from-[#000000] to-[#1a1a1a] p-8 rounded-3xl text-white shadow-xl flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-black uppercase tracking-tight">Counseling Manager</h2>
+          <p className="mt-2 text-gray-300 opacity-90 font-medium">Manage availability slots and student requests.</p>
+        </div>
+        <div className="flex gap-2 bg-white/10 p-1 rounded-2xl">
+          <button
+            onClick={() => setActiveTab('requests')}
+            className={`px-6 py-2 rounded-xl font-bold transition-all ${activeTab === 'requests' ? 'bg-white text-black shadow-lg' : 'text-white hover:bg-white/10'}`}
+          >
+            Requests ({sessions.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('slots')}
+            className={`px-6 py-2 rounded-xl font-bold transition-all ${activeTab === 'slots' ? 'bg-white text-black shadow-lg' : 'text-white hover:bg-white/10'}`}
+          >
+            Slots ({slots.length})
+          </button>
+        </div>
+      </div>
+
+      {activeTab === 'requests' && (
+        <div className="grid grid-cols-1 gap-6">
+          {sessions.map(session => (
+            <div key={session.id} className="bg-white border border-gray-100 rounded-3xl p-8 shadow-sm hover:shadow-xl transition-all relative overflow-hidden group">
+              <div className={`absolute top-0 right-0 px-6 py-2 rounded-bl-3xl text-[10px] font-black uppercase tracking-widest ${session.status === 'accepted' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                {session.status}
+              </div>
+
+              <div className="flex flex-col md:flex-row justify-between gap-8">
+                <div className="space-y-4 flex-1">
+                  <div>
+                    <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight">{session.full_name}</h3>
+                    <p className="text-blue-600 font-bold uppercase text-xs mt-1">{session.service_name}</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm font-medium text-gray-500">
+                    <div className="flex items-center gap-2">
+                      <User size={16} />
+                      <span>{session.current_class} • {session.age} years</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar size={16} />
+                      <span>{new Date(session.preferred_date_time).toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone size={16} />
+                      <span>{session.phone}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Mail size={16} />
+                      <span>{session.email}</span>
+                    </div>
+                  </div>
+
+                  {session.meet_link && (
+                    <div className="bg-green-50 p-3 rounded-xl border border-green-100 text-green-700 text-xs font-bold flex items-center gap-2">
+                      <Video size={14} /> Meet Link: <a href={session.meet_link} target="_blank" className="underline">{session.meet_link}</a>
+                    </div>
+                  )}
+
+                  {session.message && (
+                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Message</p>
+                      <p className="text-gray-600 text-sm">"{session.message}"</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="md:w-64 border-l border-gray-50 md:pl-8 flex flex-col justify-center">
+                  <div className="text-center md:text-right mb-6">
+                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Charges</p>
+                    <p className="text-4xl font-black text-gray-900 tracking-tight">₹{session.charges}</p>
+                    <p className="text-[10px] font-black text-blue-500 uppercase mt-1">Paid via {session.payment_method}</p>
+                  </div>
+                  {session.status === 'pending' && (
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => handleAcceptClick(session)}
+                        className="w-full bg-green-600 text-white font-black py-4 rounded-2xl hover:bg-green-700 shadow-lg shadow-green-100 transition-all uppercase tracking-widest text-xs"
+                      >
+                        Accept & Send Link
+                      </button>
+                      <button
+                        onClick={() => handleRejectSession(session.id)}
+                        disabled={isProcessing}
+                        className="w-full bg-red-50 text-red-600 font-bold py-3 rounded-2xl hover:bg-red-100 transition-all uppercase tracking-widest text-[10px]"
+                      >
+                        Reject Request
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeTab === 'slots' && (
+        <div className="space-y-8">
+          <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
+            <h3 className="text-xl font-black mb-6 uppercase">Create New Availability</h3>
+            <form onSubmit={handleCreateSlot} className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <label className="block text-xs font-black text-gray-400 uppercase mb-2 ml-2">Slot Start Time</label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={newSlot.start_time}
+                  onChange={(e) => setNewSlot({ ...newSlot, start_time: e.target.value })}
+                  className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold"
+                />
+              </div>
+              <div className="w-full md:w-32">
+                <label className="block text-xs font-black text-gray-400 uppercase mb-2 ml-2">Price (₹)</label>
+                <input
+                  type="number"
+                  required
+                  placeholder="500"
+                  value={newSlot.price}
+                  onChange={(e) => setNewSlot({ ...newSlot, price: e.target.value })}
+                  className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs font-black text-gray-400 uppercase mb-2 ml-2">Service</label>
+                <select
+                  required
+                  value={newSlot.service_name}
+                  onChange={(e) => setNewSlot({ ...newSlot, service_name: e.target.value })}
+                  className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold"
+                >
+                  <option value="">Select Service</option>
+                  <option value="Basic Counseling">Basic Counseling</option>
+                  <option value="Standard Counseling">Standard Counseling</option>
+                  <option value="Premium Counseling">Premium Counseling</option>
+                  <option value="Career Assessment Test">Career Assessment Test</option>
+                </select>
+              </div>
+              <div className="flex items-end">
+                <button
+                  disabled={isProcessing}
+                  className="bg-blue-600 text-white font-black px-10 py-4 rounded-2xl hover:bg-blue-700 shadow-lg transition-all h-[58px]"
+                >
+                  {isProcessing ? 'Saving...' : 'Add Slot'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            {slots.map(slot => (
+              <div key={slot.id} className="bg-white p-6 rounded-2xl border border-gray-50 shadow-sm flex items-center justify-between group">
+                <div className="flex items-center gap-6">
+                  <div className="p-3 bg-blue-50 rounded-xl text-blue-600">
+                    <Calendar size={24} />
+                  </div>
+                  <div>
+                    <p className="font-black text-gray-900">{new Date(slot.start_time).toLocaleString()}</p>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">₹{slot.price} • {slot.service_name} • {slot.is_booked ? 'Booked' : 'Available'}</p>
+                  </div>
+                </div>
+                {!slot.is_booked && (
+                  <button
+                    onClick={() => handleDeleteSlot(slot.id)}
+                    className="p-3 text-red-100 group-hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Accept Modal */}
+      {isAcceptModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-2xl font-black text-gray-900 mb-2 uppercase">Accept Counseling</h3>
+            <p className="text-gray-500 text-sm mb-6">Enter the Google Meet link for <strong>{selectedSession?.full_name}</strong>.</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-black uppercase text-gray-400 mb-1 ml-1">Meet Link</label>
+                <div className="relative">
+                  <Video size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                  <input
+                    type="url"
+                    placeholder="https://meet.google.com/..."
+                    value={meetLink}
+                    onChange={(e) => setMeetLink(e.target.value)}
+                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <button
+                  onClick={() => setIsAcceptModalOpen(false)}
+                  className="flex-1 py-4 text-gray-400 font-bold hover:bg-gray-50 rounded-2xl transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmAccept}
+                  disabled={isProcessing}
+                  className="flex-[2] py-4 bg-green-600 text-white font-black rounded-2xl hover:bg-green-700 shadow-lg shadow-green-100 transition-all uppercase tracking-widest text-xs"
+                >
+                  {isProcessing ? 'Processing...' : 'Confirm & Accept'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default AdminDashboard;

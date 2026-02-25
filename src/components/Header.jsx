@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { FaUserCircle, FaSignOutAlt, FaHome, FaBook, FaEnvelope, FaShieldAlt, FaChevronDown, FaBars, FaTimes } from 'react-icons/fa';
+import { FaUserCircle, FaSignOutAlt, FaHome, FaBook, FaEnvelope, FaShieldAlt, FaChevronDown, FaBars, FaTimes, FaUserGraduate } from 'react-icons/fa';
 import { AuthContext } from "../auth/AuthContext";
 
 const Header = () => {
@@ -30,6 +30,7 @@ const Header = () => {
   const navLinks = [
     { name: 'Home', path: '/', icon: <FaHome /> },
     { name: 'Courses', path: '/courses', icon: <FaBook /> },
+    { name: 'Career Counselor', path: '/CareerCounselor', icon: <FaUserGraduate /> },
     { name: 'Contact Us', path: '/contact-us', icon: <FaEnvelope /> },
     { name: 'Privacy Policy', path: '/privacy', icon: <FaShieldAlt /> },
   ];
